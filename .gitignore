@@ -2,4 +2,4 @@
 houses.iml
 .gitignore
 .idea
-.env
+env

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="api.http.HousesWebApiAuthPagingTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-03T20:40:43.932Z" hostname="kaua-Aspire-A315-44P" time="0.136">
+  <properties/>
+  <testcase name="bookings endpoints require bearer token and support paging()" classname="api.http.HousesWebApiAuthPagingTest" time="0.094"/>
+  <testcase name="create house requires bearer token()" classname="api.http.HousesWebApiAuthPagingTest" time="0.006"/>
+  <testcase name="house stores owner and only owner can command ad()" classname="api.http.HousesWebApiAuthPagingTest" time="0.014"/>
+  <testcase name="houses list supports skip and limit paging()" classname="api.http.HousesWebApiAuthPagingTest" time="0.016"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

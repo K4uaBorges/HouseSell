@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class CreateHouseRequest(
     val title: String,
-    val location: String,
+    val lid: String,
     val areaSqMt: Int,
     val pricePerNight: Double,
     val description: String

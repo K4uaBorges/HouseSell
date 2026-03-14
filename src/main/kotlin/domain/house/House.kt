@@ -20,7 +20,7 @@ data class House(
     val id: Uuid,
     val uid: Uuid,          // Owner
     val title: Title,
-    val location: String,
+    val lid: Uuid,          // Localization
     val areaSqMt: Int,
     val pricePerNight: Double,
     val description: String,

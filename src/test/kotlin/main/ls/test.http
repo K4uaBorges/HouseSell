@@ -1,0 +1,22 @@
+@token=56721243-3b0d-466d-8323-b6588f7ae555
+POST http://localhost:8080/users
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "aaaaa@gmail.com"
+}
+
+###
+GET http://localhost:8080/users
+
+###
+POST http://localhost:8080/locations
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Pt",
+  "type": "COUNTRY",
+  "partentId": null
+}

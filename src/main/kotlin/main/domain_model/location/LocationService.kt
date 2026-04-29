@@ -34,8 +34,8 @@ class LocationService(
             require(it.type.isHigherThan(type)) { "Invalid hierarchy: ${it.type} cannot contain $type" }
         }
 
-        require(!existsLocationWithSameName(name, parentId)) {
-            "Location with name '${name.value}' already exists for this parent"
+        require(!existsLocationWithSameName(name)) {
+            "Location with name '${name.value}' already exists"
         }
 
         return repo.create(
@@ -126,8 +126,8 @@ class LocationService(
             require(!wouldCreateCycle(id, pid)) { "Would create cycle in location hierarchy" }
         }
 
-        require(!existsLocationWithSameName(name, parentId, excludeId = id)) {
-            "Location with name '${name.value}' already exists for this parent"
+        require(!existsLocationWithSameName(name, excludeId = id)) {
+            "Location with name '${name.value}' already exists"
         }
 
         return repo.update(
@@ -160,12 +160,10 @@ class LocationService(
 
     private fun existsLocationWithSameName(
         name: LocationName,
-        parentId: Uuid?,
         excludeId: Uuid? = null,
     ): Boolean =
         repo.getAll().any { location ->
             location.id != excludeId &&
-                location.parentId == parentId &&
                 location.name.value.equals(name.value, ignoreCase = true)
         }
 

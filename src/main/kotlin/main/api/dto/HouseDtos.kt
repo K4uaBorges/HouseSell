@@ -33,7 +33,8 @@ data class CreateHouseResponse(
     val lid: String,
     val areaSqMt: Int,
     val pricePerNight: Double,
-    val description: String
+    val description: String,
+    val token: String? = null,
 )
 
 @Serializable
@@ -56,4 +57,23 @@ data class DeleteHouseResponse(
 @Serializable
 data class ListHousesResponse(
     val houses: List<GetHouseResponse>,
+)
+
+@Serializable
+data class HousePricePreviewResponse(
+    val areaSqMt: Int,
+    val predictedPricePerNight: Long,
+    val trainingSource: String,
+    val trainingSamples: Int,
+    val modelWeight: Double,
+    val modelBias: Double,
+)
+
+@Serializable
+data class HouseCacheStatsResponse(
+    val limit: Int,
+    val size: Int,
+    val hits: Long,
+    val misses: Long,
+    val hitRate: Double,
 )

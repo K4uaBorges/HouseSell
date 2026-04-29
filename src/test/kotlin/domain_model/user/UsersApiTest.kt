@@ -9,14 +9,21 @@ import main.data.impl.mem.InMemoryBookingRepository
 import main.data.impl.mem.InMemoryHouseRepository
 import main.data.impl.mem.InMemoryLocationRepository
 import main.data.impl.mem.InMemoryUsersRepository
+import main.domain_model.user.Email
+import main.domain_model.user.Name
+import main.domain_model.user.User
 import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalUuidApi::class)
 class UsersApiTest {
     private val api = HousesWebApi(HousesDataMem.services)
+    private lateinit var adminToken: String
 
     @BeforeTest
     fun setup() {
@@ -24,6 +31,7 @@ class UsersApiTest {
         InMemoryHouseRepository.clear()
         InMemoryBookingRepository.clear()
         InMemoryLocationRepository.clear()
+        adminToken = seedAuthUserToken().toString()
     }
 
     @Test
@@ -31,6 +39,7 @@ class UsersApiTest {
         val response =
             api.routes(
                 Request(Method.POST, "/users")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alice","email":"alice@example.com"}"""),
             )
@@ -43,12 +52,14 @@ class UsersApiTest {
     fun `GET users returns list`() {
         api.routes(
             Request(Method.POST, "/users")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Alice","email":"alice@example.com"}"""),
         )
 
         api.routes(
             Request(Method.POST, "/users")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Alice2","email":"alice2@example.com"}"""),
         )
@@ -72,6 +83,7 @@ class UsersApiTest {
         val createResponse =
             api.routes(
                 Request(Method.POST, "/users")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alice","email":"alice@example.com"}"""),
             )
@@ -95,6 +107,7 @@ class UsersApiTest {
         val response1 =
             api.routes(
                 Request(Method.POST, "/users")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alicia","email":"alice@example.com"}"""),
             )
@@ -108,6 +121,7 @@ class UsersApiTest {
         val response2 =
             api.routes(
                 Request(Method.PUT, "/users/$id")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alice","email":"alice2@example.com"}"""),
             )
@@ -122,6 +136,7 @@ class UsersApiTest {
     fun `PUT user to already exising email should return 400`() {
         api.routes(
             Request(Method.POST, "/users")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Alicia","email":"alice@example.com"}"""),
         )
@@ -129,6 +144,7 @@ class UsersApiTest {
         val response1 =
             api.routes(
                 Request(Method.POST, "/users")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alicia2","email":"alice2@example.com"}"""),
             )
@@ -142,6 +158,7 @@ class UsersApiTest {
         val response2 =
             api.routes(
                 Request(Method.PUT, "/users/$id")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alice","email":"alice@example.com"}"""),
             )
@@ -154,6 +171,7 @@ class UsersApiTest {
     fun `PUT inexistent user returns 400`() {
         api.routes(
             Request(Method.POST, "/users")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Alicia","email":"alice@example.com"}"""),
         )
@@ -161,6 +179,7 @@ class UsersApiTest {
         val response =
             api.routes(
                 Request(Method.PUT, "/users/invalid-uuid")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alice","email":"alice2@example.com"}"""),
             )
@@ -172,6 +191,7 @@ class UsersApiTest {
     fun `POST duplicate user email returns 400`() {
         api.routes(
             Request(Method.POST, "/users")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Alice","email":"alice@example.com"}"""),
         )
@@ -179,6 +199,7 @@ class UsersApiTest {
         val response =
             api.routes(
                 Request(Method.POST, "/users")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alicia","email":"alice@example.com"}"""),
             )
@@ -191,12 +212,17 @@ class UsersApiTest {
         val createResponse =
             api.routes(
                 Request(Method.POST, "/users")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alice","email":"alice@example.com"}"""),
             )
 
         val id = extractField(createResponse.bodyString(), "id")
-        val deleteResponse = api.routes(Request(Method.DELETE, "/users/$id"))
+        val deleteResponse =
+            api.routes(
+                Request(Method.DELETE, "/users/$id")
+                    .header("Authorization", "Bearer $adminToken"),
+            )
         val getResponse = api.routes(Request(Method.GET, "/users/$id"))
 
         assertEquals(Status.OK, deleteResponse.status)
@@ -208,6 +234,7 @@ class UsersApiTest {
         val createResponse =
             api.routes(
                 Request(Method.POST, "/users")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Alice","email":"alice@example.com"}"""),
             )
@@ -216,6 +243,7 @@ class UsersApiTest {
         val response =
             api.routes(
                 Request(Method.DELETE, "/users/$id")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"id":"${UUID.randomUUID()}"}"""),
             )
@@ -233,4 +261,16 @@ class UsersApiTest {
             ?.groupValues
             ?.get(1)
             ?: error("Could not extract $field from response")
+
+    private fun seedAuthUserToken(): Uuid {
+        val authUser =
+            User(
+                id = Uuid.random(),
+                name = Name.of("Zulu Admin"),
+                email = Email.of("zulu-admin@example.com"),
+                token = Uuid.random(),
+            )
+        InMemoryUsersRepository.create(authUser)
+        return authUser.token
+    }
 }

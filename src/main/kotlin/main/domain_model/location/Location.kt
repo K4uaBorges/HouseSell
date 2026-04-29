@@ -21,7 +21,7 @@ value class LocationName private constructor(
         fun of(raw: String): LocationName {
             val trimmed = raw.trim()
             require(trimmed.length in 2..100) { "Name must be between 2 and 100 characters" }
-            return LocationName(raw)
+            return LocationName(trimmed)
         }
     }
 

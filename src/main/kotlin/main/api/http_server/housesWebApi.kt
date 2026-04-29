@@ -2,11 +2,11 @@ package main.api.http_server
 
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import org.http4k.core.HttpHandler
 import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
+import org.http4k.routing.RoutingHttpHandler
 import org.http4k.routing.bind
 import org.http4k.routing.path
 import org.http4k.routing.routes
@@ -44,9 +44,10 @@ class HousesWebApi(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    val routes: HttpHandler =
+    val routes: RoutingHttpHandler =
         routes(
             // Users
+            "/session/bootstrap" bind Method.GET to ::bootstrapSession,
             "/users" bind Method.POST to ::createUser,
             "/users" bind Method.GET to ::listUsers,
             "/users/{uid}" bind Method.GET to ::getUser,
@@ -66,23 +67,30 @@ class HousesWebApi(
             "/houses/mine" bind Method.GET to ::listMyHouses,
             "/houses" bind Method.POST to ::createHouse,
             "/houses/available" bind Method.GET to ::listAvailableHouses,
+            "/houses/preview" bind Method.GET to ::previewHousePrice,
+            "/houses/cache/stats" bind Method.GET to ::getHouseCacheStats,
             "/houses/{hid}" bind Method.GET to ::getHouse,
             "/houses/{hid}" bind Method.PUT to ::updateHouse,
             "/houses/{hid}" bind Method.DELETE to ::deleteHouse,
             // Bookings
             "/bookings" bind Method.POST to ::createBooking,
             "/bookings" bind Method.GET to ::listBookings,
+            "/bookings/mine" bind Method.GET to ::listMyBookings,
             "/bookings/{bid}" bind Method.GET to ::getBooking,
             "/bookings/{bid}" bind Method.PUT to ::updateBooking,
             "/bookings/{bid}" bind Method.DELETE to ::deleteBooking,
         )
 
     // ==================== USER ====================
+    private fun bootstrapSession(request: Request): Response =
+        safe {
+            jsonResponse(Status.OK, services.ensureBootstrapSession())
+        }
+
     private fun createUser(request: Request): Response =
         safe {
-            val token = bearerToken(request)
             val body = decodeBody<CreateUserRequest>(request)
-            jsonResponse(Status.CREATED, services.createUser(token, body))
+            jsonResponse(Status.CREATED, services.createUser(body))
         }
 
     private fun listUsers(request: Request): Response =
@@ -124,7 +132,7 @@ class HousesWebApi(
 
     private fun listLocations(request: Request): Response =
         safe {
-            jsonResponse(Status.OK, services.listLocations())
+            jsonResponse(Status.OK, services.listLocations(pagingOf(request)))
         }
 
     private fun getLocation(request: Request): Response =
@@ -192,6 +200,17 @@ class HousesWebApi(
             jsonResponse(Status.OK, services.getHouse(hid))
         }
 
+    private fun previewHousePrice(request: Request): Response =
+        safe {
+            val areaSqMt = requireQueryInt(request, "areaSqMt")
+            jsonResponse(Status.OK, services.previewHousePrice(areaSqMt))
+        }
+
+    private fun getHouseCacheStats(request: Request): Response =
+        safe {
+            jsonResponse(Status.OK, services.getHouseCacheStats())
+        }
+
     private fun updateHouse(request: Request): Response =
         safe {
             val hid = requirePath(request, "hid", "House id is required.")
@@ -221,6 +240,11 @@ class HousesWebApi(
             val dateS = requireQuery(request, "dateStart")
             val dateE = requireQuery(request, "dateEnd")
             jsonResponse(Status.OK, services.listBookings(bearerToken(request), hid, dateS, dateE, pagingOf(request)))
+        }
+
+    private fun listMyBookings(request: Request): Response =
+        safe {
+            jsonResponse(Status.OK, services.listMyBookings(bearerToken(request), pagingOf(request)))
         }
 
     private fun getBooking(request: Request): Response =
@@ -268,6 +292,13 @@ class HousesWebApi(
     ): String =
         request.query(key)?.trim()?.takeIf { it.isNotEmpty() }
             ?: throw IllegalArgumentException("$key query parameter is required.")
+
+    private fun requireQueryInt(
+        request: Request,
+        key: String,
+    ): Int =
+        requireQuery(request, key).toIntOrNull()
+            ?: throw IllegalArgumentException("$key query parameter must be an integer.")
 
     private fun pagingOf(request: Request): Paging = Paging.of(request.query("skip"), request.query("limit"))
 

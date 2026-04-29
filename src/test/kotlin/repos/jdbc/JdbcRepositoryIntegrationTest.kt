@@ -1,6 +1,7 @@
 package repos.jdbc
 
 import org.junit.jupiter.api.Test
+import main.data.impl.caches.HouseInfoCache
 import main.data.impl.jdbc.JdbcBookingRepository
 import main.data.impl.jdbc.JdbcHouseRepository
 import main.data.impl.jdbc.JdbcLocationRepository
@@ -23,7 +24,7 @@ import kotlin.uuid.Uuid
 class JdbcRepositoryIntegrationTest : repos.jdbc.PostgresTestContainer() {
     private val userRepo by lazy { JdbcUsersRepository(dataSource) }
     private val locationRepo by lazy { JdbcLocationRepository(dataSource) }
-    private val houseRepo by lazy { JdbcHouseRepository(dataSource) }
+    private val houseRepo by lazy { JdbcHouseRepository(dataSource, HouseInfoCache(limit = 100)) }
     private val bookingRepo by lazy { JdbcBookingRepository(dataSource) }
 
     @Test

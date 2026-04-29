@@ -3,12 +3,16 @@ package domain_model.booking
 import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Status
+import main.api.dto.CreateUserRequest
 import main.api.http_server.HousesDataMem
 import main.api.http_server.HousesWebApi
 import main.data.impl.mem.InMemoryBookingRepository
 import main.data.impl.mem.InMemoryHouseRepository
 import main.data.impl.mem.InMemoryLocationRepository
 import main.data.impl.mem.InMemoryUsersRepository
+import main.domain_model.user.Email
+import main.domain_model.user.Name
+import main.domain_model.user.User
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,6 +23,7 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalUuidApi::class)
 class BookingApiTest {
     private val api = HousesWebApi(HousesDataMem.services)
+    private lateinit var adminToken: String
 
     @BeforeTest
     fun setup() {
@@ -26,6 +31,7 @@ class BookingApiTest {
         InMemoryHouseRepository.clear()
         InMemoryBookingRepository.clear()
         InMemoryLocationRepository.clear()
+        adminToken = seedAuthUserToken().toString()
     }
 
     @Test
@@ -184,10 +190,62 @@ class BookingApiTest {
         assertTrue(response.bodyString().contains(houseId))
     }
 
+    @Test
+    fun `GET bookings mine returns only authenticated user bookings`() {
+        val userAToken =
+            HousesDataMem.services.createUser(CreateUserRequest("User A", "usera@example.com")).token
+        val houseId = createHouseAndGetId(userAToken)
+        val userBToken =
+            HousesDataMem.services.createUser(CreateUserRequest("User B", "userb@example.com")).token
+
+        val bookingAResponse =
+            api.routes(
+                Request(Method.POST, "/bookings")
+                    .header("Authorization", "Bearer $userAToken")
+                    .header("Content-Type", "application/json")
+                    .body("""{"hid":"$houseId","startDate":"2026-06-10","endDate":"2026-06-12"}"""),
+            )
+        val bookingAId = extractField(bookingAResponse.bodyString(), "id")
+
+        val bookingBResponse =
+            api.routes(
+                Request(Method.POST, "/bookings")
+                    .header("Authorization", "Bearer $userBToken")
+                    .header("Content-Type", "application/json")
+                    .body("""{"hid":"$houseId","startDate":"2026-06-13","endDate":"2026-06-15"}"""),
+            )
+        val bookingBId = extractField(bookingBResponse.bodyString(), "id")
+
+        val response =
+            api.routes(
+                Request(Method.GET, "/bookings/mine")
+                    .header("Authorization", "Bearer $userAToken"),
+            )
+
+        assertEquals(Status.CREATED, bookingAResponse.status)
+        assertEquals(Status.CREATED, bookingBResponse.status)
+        assertEquals(Status.OK, response.status)
+        assertTrue(response.bodyString().contains(bookingAId))
+        assertTrue(!response.bodyString().contains(bookingBId))
+    }
+
+    private fun seedAuthUserToken(): Uuid {
+        val authUser =
+            User(
+                id = Uuid.random(),
+                name = Name.of("Auth User"),
+                email = Email.of("auth@example.com"),
+                token = Uuid.random(),
+            )
+        InMemoryUsersRepository.create(authUser)
+        return authUser.token
+    }
+
     private fun createUserAndGetToken(email: String): String {
         val response =
             api.routes(
                 Request(Method.POST, "/users")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"User","email":"$email"}"""),
             )

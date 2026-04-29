@@ -46,7 +46,7 @@ create table houses (
 );
 
 create table booking (
-     id serial primary key,
+     id uuid primary key,
      hid uuid not null,
      uid uuid not null,
      start_date date not null,

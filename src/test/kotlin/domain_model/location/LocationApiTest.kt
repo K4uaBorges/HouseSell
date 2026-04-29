@@ -7,12 +7,20 @@ import org.http4k.core.Request
 import org.http4k.core.Status
 import main.api.http_server.HousesDataMem
 import main.api.http_server.HousesWebApi
+import main.data.impl.mem.InMemoryBookingRepository
+import main.data.impl.mem.InMemoryHouseRepository
 import main.data.impl.mem.InMemoryLocationRepository
+import main.data.impl.mem.InMemoryUsersRepository
+import main.domain_model.user.Email
+import main.domain_model.user.Name
+import main.domain_model.user.User
 import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 @Serializable
 private data class LocationResponse(
@@ -20,20 +28,27 @@ private data class LocationResponse(
     val parentId: String? = null,
 )
 
+@OptIn(ExperimentalUuidApi::class)
 class LocationApiTest {
     private val services = HousesDataMem.services
     private val api = HousesWebApi(services)
     private val json = Json { ignoreUnknownKeys = true }
+    private lateinit var adminToken: String
 
     @BeforeTest
     fun setup() {
+        InMemoryUsersRepository.clear()
+        InMemoryHouseRepository.clear()
+        InMemoryBookingRepository.clear()
         InMemoryLocationRepository.clear()
+        adminToken = seedAuthUserToken().toString()
     }
 
     @Test
     fun `POST locations creates country`() {
         val request =
             Request(Method.POST, "/locations")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Portugal","type":"COUNTRY"}""")
 
@@ -47,6 +62,7 @@ class LocationApiTest {
     fun `GET locations returns list`() {
         api.routes(
             Request(Method.POST, "/locations")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Portugal","type":"COUNTRY"}"""),
         )
@@ -75,6 +91,7 @@ class LocationApiTest {
     fun `POST locations without body should return 400`() {
         val request =
             Request(Method.POST, "/locations")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""""")
 
@@ -88,6 +105,7 @@ class LocationApiTest {
         val countryResp =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Portugal","type":"COUNTRY"}"""),
             )
@@ -96,6 +114,7 @@ class LocationApiTest {
         val response =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Lisboa","type":"DISTRICT","parentId":"$countryId"}"""),
             )
@@ -108,6 +127,7 @@ class LocationApiTest {
         val created =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Portugal","type":"COUNTRY"}"""),
             )
@@ -116,6 +136,7 @@ class LocationApiTest {
         val response =
             api.routes(
                 Request(Method.PUT, "/locations/$id")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Portugal Updated","type":"COUNTRY","parentId":null}"""),
             )
@@ -129,6 +150,7 @@ class LocationApiTest {
         val country =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Portugal","type":"COUNTRY"}"""),
             )
@@ -136,6 +158,7 @@ class LocationApiTest {
 
         api.routes(
             Request(Method.POST, "/locations")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Norte","type":"REGION","parentId":"$countryId"}"""),
         )
@@ -151,6 +174,7 @@ class LocationApiTest {
         val country =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Portugal","type":"COUNTRY"}"""),
             )
@@ -158,6 +182,7 @@ class LocationApiTest {
 
         api.routes(
             Request(Method.POST, "/locations")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Norte","type":"REGION","parentId":"$countryId"}"""),
         )
@@ -173,6 +198,7 @@ class LocationApiTest {
         val country =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Portugal","type":"COUNTRY"}"""),
             )
@@ -180,6 +206,7 @@ class LocationApiTest {
         val region =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Norte","type":"REGION","parentId":"$countryId"}"""),
             )
@@ -197,6 +224,7 @@ class LocationApiTest {
         val created =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Portugal","type":"COUNTRY"}"""),
             )
@@ -204,6 +232,7 @@ class LocationApiTest {
         val createdChild =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Norte","type":"REGION","parentId":"${extractId(created.bodyString())}"}"""),
             )
@@ -211,12 +240,17 @@ class LocationApiTest {
         val createdChildSqd =
             api.routes(
                 Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
-                    .body("""{"name":"Portugal","type":"DISTRICT","parentId":"${extractId(createdChild.bodyString())}"}"""),
+                    .body("""{"name":"Porto","type":"DISTRICT","parentId":"${extractId(createdChild.bodyString())}"}"""),
             )
         val idchlsqd = extractId(createdChildSqd.bodyString())
 
-        val deleteResponse = api.routes(Request(Method.DELETE, "/locations/$idchlsqd"))
+        val deleteResponse =
+            api.routes(
+                Request(Method.DELETE, "/locations/$idchlsqd")
+                    .header("Authorization", "Bearer $adminToken"),
+            )
         val getResponse3 = api.routes(Request(Method.GET, "/locations/$idchlsqd"))
 
         assertEquals(Status.OK, deleteResponse.status)
@@ -224,4 +258,16 @@ class LocationApiTest {
     }
 
     private fun extractId(jsonStr: String): String = json.decodeFromString<domain_model.location.LocationResponse>(jsonStr).id
+
+    private fun seedAuthUserToken(): Uuid {
+        val authUser =
+            User(
+                id = Uuid.random(),
+                name = Name.of("Zulu Admin"),
+                email = Email.of("zulu-admin@example.com"),
+                token = Uuid.random(),
+            )
+        InMemoryUsersRepository.create(authUser)
+        return authUser.token
+    }
 }

@@ -44,3 +44,12 @@ data class DeleteUserResponse(
 data class ListUsersResponse(
     val users: List<GetUserResponse>,
 )
+
+@Serializable
+data class BootstrapSessionResponse(
+    val token: String,
+    val userId: String,
+    val locationId: String,
+    val freeHouseId: String,
+    val busyHouseId: String,
+)

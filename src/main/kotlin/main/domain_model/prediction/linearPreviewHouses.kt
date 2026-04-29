@@ -3,6 +3,7 @@ package main.domain_model.prediction
 import main.app.config.createDataSource
 import main.app.config.getOptionalSetting
 import main.app.config.loadDotEnv
+import main.data.impl.caches.HouseInfoCache
 import main.data.impl.jdbc.JdbcHouseRepository
 import main.data.impl.mem.InMemoryHouseRepository
 import main.data.interfaces.HouseRepository
@@ -71,7 +72,7 @@ fun loadTrainingData(dotEnv: Properties? = loadDotEnv()): TrainingData {
     if (!jdbcUrl.isNullOrBlank()) {
         val dbSamples =
             runCatching {
-                val repository = JdbcHouseRepository(createDataSource(dotEnv))
+                val repository = JdbcHouseRepository(createDataSource(dotEnv), HouseInfoCache(limit = 100))
                 loadHousesFromRepository(repository)
             }.getOrElse { emptyList() }
 

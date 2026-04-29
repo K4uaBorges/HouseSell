@@ -1,1 +1,0 @@
-rootProject.name = "my-java21-postgres-tests"

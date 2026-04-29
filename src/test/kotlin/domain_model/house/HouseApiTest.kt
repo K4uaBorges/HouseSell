@@ -9,6 +9,9 @@ import main.data.impl.mem.InMemoryBookingRepository
 import main.data.impl.mem.InMemoryHouseRepository
 import main.data.impl.mem.InMemoryLocationRepository
 import main.data.impl.mem.InMemoryUsersRepository
+import main.domain_model.user.Email
+import main.domain_model.user.Name
+import main.domain_model.user.User
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -19,6 +22,7 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalUuidApi::class)
 class HouseApiTest {
     private val api = HousesWebApi(HousesDataMem.services)
+    private lateinit var adminToken: String
 
     @BeforeTest
     fun setup() {
@@ -26,6 +30,7 @@ class HouseApiTest {
         InMemoryHouseRepository.clear()
         InMemoryBookingRepository.clear()
         InMemoryLocationRepository.clear()
+        adminToken = seedAuthUserToken().toString()
     }
 
     @Test
@@ -170,6 +175,40 @@ class HouseApiTest {
     }
 
     @Test
+    fun `GET houses available returns only free house when another is booked`() {
+        val token = createUserAndGetToken("availability-owner@example.com")
+        val locationSeed = Uuid.random().toString().take(8)
+        val countryId = createLocationAndGetId(token, "PT-$locationSeed", "COUNTRY")
+        val regionId = createLocationAndGetId(token, "Reg-$locationSeed", "REGION", countryId)
+        val districtId = createLocationAndGetId(token, "Dis-$locationSeed", "DISTRICT", regionId)
+        val municipalityId = createLocationAndGetId(token, "Mun-$locationSeed", "MUNICIPALITY", districtId)
+        val locationId = createLocationAndGetId(token, "Loc-$locationSeed", "LOCALITY", municipalityId)
+
+        val freeHouseId = createHouseAndGetId(token, "Casa Livre", locationId)
+        val bookedHouseId = createHouseAndGetId(token, "Casa Ocupada", locationId)
+
+        val bookingResponse =
+            api.routes(
+                Request(Method.POST, "/bookings")
+                    .header("Authorization", "Bearer $token")
+                    .header("Content-Type", "application/json")
+                    .body("""{"hid":"$bookedHouseId","startDate":"2026-06-10","endDate":"2026-06-15"}"""),
+            )
+        assertEquals(Status.CREATED, bookingResponse.status)
+
+        val availableResponse =
+            api.routes(
+                Request(Method.GET, "/houses/available?startDate=2026-06-11&endDate=2026-06-12"),
+            )
+
+        assertEquals(Status.OK, availableResponse.status)
+        assertTrue(availableResponse.bodyString().contains(freeHouseId))
+        assertTrue(availableResponse.bodyString().contains("Casa Livre"))
+        assertTrue(!availableResponse.bodyString().contains(bookedHouseId))
+        assertTrue(!availableResponse.bodyString().contains("Casa Ocupada"))
+    }
+
+    @Test
     fun `POST house without authorization returns 401`() {
         val response =
             api.routes(
@@ -187,6 +226,7 @@ class HouseApiTest {
         val response =
             api.routes(
                 Request(Method.POST, "/users")
+                    .header("Authorization", "Bearer $adminToken")
                     .header("Content-Type", "application/json")
                     .body("""{"name":"Owner","email":"$email"}"""),
             )
@@ -197,6 +237,7 @@ class HouseApiTest {
     private fun createHouseAndGetId(
         token: String,
         title: String,
+        lid: String = Uuid.random().toString(),
     ): String {
         val response =
             api.routes(
@@ -204,9 +245,28 @@ class HouseApiTest {
                     .header("Authorization", "Bearer $token")
                     .header("Content-Type", "application/json")
                     .body(
-                        """{"title":"$title","lid":"${Uuid.random()}","areaSqMt":120,"pricePerNight":95.0,"description":"Casa teste"}""",
+                        """{"title":"$title","lid":"$lid","areaSqMt":120,"pricePerNight":95.0,"description":"Casa teste"}""",
                     ),
             )
+        return extractField(response.bodyString(), "id")
+    }
+
+    private fun createLocationAndGetId(
+        token: String,
+        name: String,
+        type: String,
+        parentId: String? = null,
+    ): String {
+        val parentField = parentId?.let { "\"$it\"" } ?: "null"
+        val payload = """{"name":"$name","type":"$type","parentId":$parentField}"""
+        val response =
+            api.routes(
+                Request(Method.POST, "/locations")
+                    .header("Authorization", "Bearer $token")
+                    .header("Content-Type", "application/json")
+                    .body(payload),
+            )
+        assertEquals(Status.CREATED, response.status, response.bodyString())
         return extractField(response.bodyString(), "id")
     }
 
@@ -220,4 +280,16 @@ class HouseApiTest {
             ?.groupValues
             ?.get(1)
             ?: error("Could not extract $field from response")
+
+    private fun seedAuthUserToken(): Uuid {
+        val authUser =
+            User(
+                id = Uuid.random(),
+                name = Name.of("Zulu Admin"),
+                email = Email.of("zulu-admin@example.com"),
+                token = Uuid.random(),
+            )
+        InMemoryUsersRepository.create(authUser)
+        return authUser.token
+    }
 }

@@ -9,13 +9,21 @@ import main.data.impl.mem.InMemoryBookingRepository
 import main.data.impl.mem.InMemoryHouseRepository
 import main.data.impl.mem.InMemoryLocationRepository
 import main.data.impl.mem.InMemoryUsersRepository
+import main.domain_model.user.Email
+import main.domain_model.user.Name
+import main.domain_model.user.User
+import java.time.LocalDate
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalUuidApi::class)
 class HousesWebApiTest {
     private val api = HousesWebApi(HousesDataMem.services)
+    private lateinit var adminToken: String
 
     @BeforeTest
     fun clearRepos() {
@@ -23,12 +31,14 @@ class HousesWebApiTest {
         InMemoryHouseRepository.clear()
         InMemoryBookingRepository.clear()
         InMemoryLocationRepository.clear()
+        adminToken = seedAuthUserToken().toString()
     }
 
     @Test
     fun `POST users with invalid json returns 400`() {
         val response = api.routes(
             Request(Method.POST, "/users")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("{invalid"),
         )
@@ -41,6 +51,7 @@ class HousesWebApiTest {
     fun `POST users creates and GET users lists it`() {
         val createResponse = api.routes(
             Request(Method.POST, "/users")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Alice","email":"alice@example.com"}"""),
         )
@@ -55,6 +66,7 @@ class HousesWebApiTest {
     fun `DELETE users returns delete response and removes user`() {
         val createResponse = api.routes(
             Request(Method.POST, "/users")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"name":"Alice","email":"alice@example.com"}"""),
         )
@@ -62,6 +74,7 @@ class HousesWebApiTest {
 
         val deleteResponse = api.routes(
             Request(Method.DELETE, "/users/$userId")
+                .header("Authorization", "Bearer $adminToken")
                 .header("Content-Type", "application/json")
                 .body("""{"id":"$userId"}"""),
         )
@@ -71,5 +84,55 @@ class HousesWebApiTest {
 
         val listResponse = api.routes(Request(Method.GET, "/users"))
         assertTrue(!listResponse.bodyString().contains("alice@example.com"))
+    }
+
+    @Test
+    fun `GET houses preview returns predicted price`() {
+        val response = api.routes(Request(Method.GET, "/houses/preview?areaSqMt=110"))
+
+        assertEquals(Status.OK, response.status)
+        assertTrue(response.bodyString().contains("\"predictedPricePerNight\""))
+        assertTrue(response.bodyString().contains("\"trainingSource\""))
+    }
+
+    @Test
+    fun `GET houses cache stats returns counters`() {
+        val response = api.routes(Request(Method.GET, "/houses/cache/stats"))
+
+        assertEquals(Status.OK, response.status)
+        assertTrue(response.bodyString().contains("\"hits\""))
+        assertTrue(response.bodyString().contains("\"misses\""))
+        assertTrue(response.bodyString().contains("\"limit\""))
+    }
+
+    @Test
+    fun `GET session bootstrap seeds principal data and returns token`() {
+        val bootstrap = api.routes(Request(Method.GET, "/session/bootstrap"))
+        assertEquals(Status.OK, bootstrap.status)
+        assertTrue(bootstrap.bodyString().contains("\"token\""))
+        assertTrue(bootstrap.bodyString().contains("\"busyHouseId\""))
+        assertTrue(bootstrap.bodyString().contains("\"freeHouseId\""))
+
+        val today = LocalDate.now()
+        val tomorrow = today.plusDays(1)
+        val availableResponse =
+            api.routes(
+                Request(Method.GET, "/houses/available?startDate=$today&endDate=$tomorrow"),
+            )
+        assertEquals(Status.OK, availableResponse.status)
+        assertTrue(availableResponse.bodyString().contains("Casa Demo Livre"))
+        assertTrue(!availableResponse.bodyString().contains("Casa Demo Ocupada"))
+    }
+
+    private fun seedAuthUserToken(): Uuid {
+        val authUser =
+            User(
+                id = Uuid.random(),
+                name = Name.of("Zulu Admin"),
+                email = Email.of("zulu-admin@example.com"),
+                token = Uuid.random(),
+            )
+        InMemoryUsersRepository.create(authUser)
+        return authUser.token
     }
 }

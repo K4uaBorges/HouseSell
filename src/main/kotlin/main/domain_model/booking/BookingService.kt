@@ -74,11 +74,12 @@ class BookingService(
         dateEnd: Date,
     ): List<GetBookingResponse> {
         val hid = requireExistingHouse(hid).id
+        validateDateRange(dateStart, dateEnd)
         return bookingRepo
             .getAll()
             .asSequence()
             .filter { it.hid == hid }
-            .filter { it.startDate >= dateStart || it.endDate <= dateEnd }
+            .filter { overlaps(it.startDate, it.endDate, dateStart, dateEnd) }
             .sortedBy { it.startDate.value }
             .map { it.toGetBookingResponse() }
             .toList()
@@ -127,6 +128,8 @@ class BookingService(
             .sortedBy { it.startDate.value }
             .toList()
     }
+
+    fun listBookingsByUser(userId: Uuid): List<Booking> = bookingRepo.getByUserId(userId)
 
     private fun requireExistingHouse(hid: Uuid): House = houseRepo.getById(hid)
 

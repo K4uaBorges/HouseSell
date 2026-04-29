@@ -30,8 +30,7 @@ class HousesServicesTest {
 
     @Test
     fun `createUser creates a user that can be fetched`() {
-        val authToken = seedAuthUserToken()
-        val created = services.createUser(authToken, CreateUserRequest("Alice", "alice@example.com"))
+        val created = services.createUser(CreateUserRequest("Alice", "alice@example.com"))
         val fetched = services.getUser(created.id)
 
         assertEquals("Alice", fetched.name)
@@ -41,10 +40,9 @@ class HousesServicesTest {
 
     @Test
     fun `listUsers applies paging`() {
-        val authToken = seedAuthUserToken()
-        services.createUser(authToken, CreateUserRequest("Ana", "ana@example.com"))
-        services.createUser(authToken, CreateUserRequest("Bruno", "bruno@example.com"))
-        services.createUser(authToken, CreateUserRequest("Carla", "carla@example.com"))
+        services.createUser(CreateUserRequest("Ana", "ana@example.com"))
+        services.createUser(CreateUserRequest("Bruno", "bruno@example.com"))
+        services.createUser(CreateUserRequest("Carla", "carla@example.com"))
 
         val page = services.listUsers(Paging(skip = 1, limit = 1))
 
@@ -56,7 +54,7 @@ class HousesServicesTest {
         val authUser =
             User(
                 id = Uuid.random(),
-                name = Name.of("Auth User"),
+                name = Name.of("Zulu Auth"),
                 email = Email.of("auth@example.com"),
                 token = Uuid.random(),
             )

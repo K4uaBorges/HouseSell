@@ -26,6 +26,13 @@ object InMemoryBookingRepository : BookingRepository {
 
     override fun getById(key: Uuid): Booking = bookingsById[key] ?: throw NoBookingExist("Booking not found.")
 
+    override fun getByUserId(uid: Uuid): List<Booking> =
+        bookingsById.values
+            .asSequence()
+            .filter { it.uid == uid }
+            .sortedBy { it.startDate.value }
+            .toList()
+
     override fun getAll(): List<Booking> = bookingsById.values.toList()
 
     override fun deleteById(key: Uuid) {

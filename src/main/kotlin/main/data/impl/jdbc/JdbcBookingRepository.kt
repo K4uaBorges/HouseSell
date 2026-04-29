@@ -83,6 +83,30 @@ class JdbcBookingRepository(
             }
         }
 
+    override fun getByUserId(uid: Uuid): List<Booking> =
+        withDatabaseHandling("listing bookings by user") {
+            dataSource.connection.use { conn ->
+                conn
+                    .prepareStatement(
+                        """
+                        select id, hid, uid, start_date, end_date
+                        from booking
+                        where uid = ?
+                        order by start_date
+                        """.trimIndent(),
+                    ).use { stmt ->
+                        stmt.setObject(1, toJavaUuid(uid))
+                        stmt.executeQuery().use { rs ->
+                            val result = mutableListOf<Booking>()
+                            while (rs.next()) {
+                                result.plusAssign(mapBooking(rs))
+                            }
+                            result
+                        }
+                    }
+            }
+        }
+
     override fun getAll(): List<Booking> =
         withDatabaseHandling("listing bookings") {
             dataSource.connection.use { conn ->

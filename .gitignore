@@ -1,1 +1,21 @@
+.gradle/
+build/
+**/build/
+out/
+gradle/
+node_modules/
 .env
+
+# Gradle local caches/distributions
+gradle/caches/
+gradle/wrapper/dists/
+
+# VS Code
+.idea/
+*.iml
+
+# binaries
+*.jar
+*.war
+*.ear
+*.zip

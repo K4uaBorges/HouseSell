@@ -44,7 +44,7 @@ class HousesRouterTest {
 
         try {
             val response = HttpClient.newHttpClient().send(
-                HttpRequest.newBuilder(URI.create("http://localhost:${server.port()}/users"))
+                HttpRequest.newBuilder(URI.create("http://localhost:${server.port()}/api/users"))
                     .GET()
                     .build(),
                 HttpResponse.BodyHandlers.ofString(),

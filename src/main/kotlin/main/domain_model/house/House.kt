@@ -9,7 +9,7 @@ value class Title private constructor(val value: String){
             val s = raw.trim()
             require(s.isNotEmpty()) { "Invalid" }
             require(s.length in 3..100) { "The name need between 3 and 100" }
-            return Title(raw)
+            return Title(s)
         }
     }
     override fun toString(): String = value

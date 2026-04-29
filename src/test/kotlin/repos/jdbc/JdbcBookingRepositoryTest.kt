@@ -3,6 +3,7 @@ package repos.jdbc
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import main.data.impl.caches.HouseInfoCache
 import main.data.impl.jdbc.JdbcBookingRepository
 import main.data.impl.jdbc.JdbcHouseRepository
 import main.data.impl.jdbc.JdbcLocationRepository
@@ -33,7 +34,7 @@ class JdbcBookingRepositoryTest : repos.jdbc.PostgresTestContainer() {
     @BeforeAll
     fun setup() {
         bookingRepo = JdbcBookingRepository(dataSource)
-        houseRepo = JdbcHouseRepository(dataSource)
+        houseRepo = JdbcHouseRepository(dataSource, HouseInfoCache(limit = 100))
         userRepo = JdbcUsersRepository(dataSource)
         locationRepo = JdbcLocationRepository(dataSource)
     }

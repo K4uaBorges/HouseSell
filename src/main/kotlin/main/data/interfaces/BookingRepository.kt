@@ -11,6 +11,8 @@ interface BookingRepository : Repository<Uuid, Booking> {
 
     override fun getById(key: Uuid): Booking
 
+    fun getByUserId(uid: Uuid): List<Booking>
+
     override fun save(value: Booking): Booking
 
     override fun getAll(): List<Booking>

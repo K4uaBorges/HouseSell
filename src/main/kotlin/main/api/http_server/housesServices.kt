@@ -9,6 +9,9 @@ import main.api.dto.CreateLocationRequest
 import main.api.dto.CreateLocationResponse
 import main.api.dto.CreateUserRequest
 import main.api.dto.CreateUserResponse
+import main.api.dto.HouseCacheStatsResponse
+import main.api.dto.HousePricePreviewResponse
+import main.api.dto.BootstrapSessionResponse
 import main.api.dto.GetBookingResponse
 import main.api.dto.GetHouseResponse
 import main.api.dto.GetLocationResponse
@@ -33,7 +36,11 @@ import main.domain_model.booking.toGetBookingResponse
 import main.domain_model.house.House
 import main.domain_model.house.HouseService
 import main.domain_model.house.toGetHouseResponse
+import main.domain_model.location.LocationType
 import main.domain_model.location.LocationService
+import main.domain_model.prediction.loadTrainingData
+import main.domain_model.prediction.predictPriceForArea
+import main.domain_model.prediction.trainModel
 import main.domain_model.location.toCreateLocationResponse
 import main.domain_model.location.toLocationSummary
 import main.domain_model.user.User
@@ -55,16 +62,84 @@ class HousesServices(
     // ==================== USER ====================
 
     fun createUser(
-        token: Uuid,
         request: CreateUserRequest,
     ): CreateUserResponse {
-        requireUserByToken(token)
         val user = usersService.createUser(request.name, request.email)
         return CreateUserResponse(
             id = user.id.toString(),
             name = user.name.value,
             email = user.email.value,
             token = user.token.toString(),
+        )
+    }
+
+    fun ensureBootstrapSession(): BootstrapSessionResponse {
+        val principalUser =
+            usersService.listUsers().firstOrNull { it.email.value.equals(BOOTSTRAP_USER_EMAIL, ignoreCase = true) }
+                ?: usersService.createUser(BOOTSTRAP_USER_NAME, BOOTSTRAP_USER_EMAIL)
+
+        val location =
+            locationService
+                .listLocations()
+                .firstOrNull {
+                    it.name.value.equals(BOOTSTRAP_LOCATION_NAME, ignoreCase = true) &&
+                        it.type == LocationType.COUNTRY
+                }
+                ?: locationService.createLocation(
+                    nameRaw = BOOTSTRAP_LOCATION_NAME,
+                    typeRaw = LocationType.COUNTRY.name,
+                    parentIdRaw = null,
+                )
+
+        val housesByTitle =
+            houseService
+                .listHousesByOwner(principalUser.id)
+                .associateBy { it.title.value.lowercase() }
+
+        val freeHouse =
+            housesByTitle[BOOTSTRAP_FREE_HOUSE_TITLE.lowercase()]
+                ?: houseService.createHouse(
+                    ownerId = principalUser.id,
+                    titleRaw = BOOTSTRAP_FREE_HOUSE_TITLE,
+                    locationHouse = location.id,
+                    areaSqMt = 110,
+                    pricePerNight = 90.0,
+                    descriptionRaw = "Casa de demonstração disponível",
+                )
+
+        val busyHouse =
+            housesByTitle[BOOTSTRAP_BUSY_HOUSE_TITLE.lowercase()]
+                ?: houseService.createHouse(
+                    ownerId = principalUser.id,
+                    titleRaw = BOOTSTRAP_BUSY_HOUSE_TITLE,
+                    locationHouse = location.id,
+                    areaSqMt = 140,
+                    pricePerNight = 120.0,
+                    descriptionRaw = "Casa de demonstração ocupada",
+                )
+
+        val today = LocalDate.now()
+        val tomorrow = today.plusDays(1)
+        val busyHouseAvailableToday =
+            bookingService
+                .listAvailableHouses(today.toString(), tomorrow.toString())
+                .any { it.id == busyHouse.id }
+
+        if (busyHouseAvailableToday) {
+            bookingService.createBooking(
+                bookerId = principalUser.id,
+                hid = busyHouse.id,
+                startDateRaw = today.toString(),
+                endDateRaw = tomorrow.toString(),
+            )
+        }
+
+        return BootstrapSessionResponse(
+            token = principalUser.token.toString(),
+            userId = principalUser.id.toString(),
+            locationId = location.id.toString(),
+            freeHouseId = freeHouse.id.toString(),
+            busyHouseId = busyHouse.id.toString(),
         )
     }
 
@@ -99,14 +174,14 @@ class HousesServices(
         token: Uuid,
         request: CreateLocationRequest,
     ): CreateLocationResponse {
-        requireUserByToken(token)
+        val user = requireUserByToken(token)
         val location =
             locationService.createLocation(
                 nameRaw = request.name,
                 typeRaw = request.type,
                 parentIdRaw = request.parentId,
             )
-        return location.toCreateLocationResponse()
+        return location.toCreateLocationResponse().copy(token = user.token.toString())
     }
 
     fun updateLocation(
@@ -140,8 +215,8 @@ class HousesServices(
 
     fun getLocationPath(lid: String): List<LocationPathEntry> = locationService.getLocationInfoById(lid).fullPath
 
-    fun listLocations(): ListLocationsResponse {
-        val locations = locationService.listLocations().map { it.toLocationSummary() }
+    fun listLocations(paging: Paging): ListLocationsResponse {
+        val locations = locationService.listLocations().map { it.toLocationSummary() }.page(paging)
         return ListLocationsResponse(locations)
     }
 
@@ -185,7 +260,6 @@ class HousesServices(
                 pricePerNight = request.pricePerNight,
                 descriptionRaw = request.description,
             )
-
         return CreateHouseResponse(
             id = house.id.toString(),
             uid = house.uid.toString(),
@@ -194,6 +268,7 @@ class HousesServices(
             areaSqMt = house.areaSqMt,
             pricePerNight = house.pricePerNight,
             description = house.description,
+            token = user.token.toString(),
         )
     }
 
@@ -219,6 +294,37 @@ class HousesServices(
     fun getHouse(hid: String): GetHouseResponse {
         val houseId = parseUuid(hid, "house id")
         return houseService.getHouseInfoById(houseId)
+    }
+
+    fun previewHousePrice(areaSqMt: Int): HousePricePreviewResponse {
+        require(areaSqMt > 0) { "areaSqMt must be greater than zero." }
+
+        val trainingData = loadTrainingData()
+        val model = trainModel(trainingData.houses)
+
+        return HousePricePreviewResponse(
+            areaSqMt = areaSqMt,
+            predictedPricePerNight = predictPriceForArea(areaSqMt, model),
+            trainingSource = trainingData.source.name,
+            trainingSamples = trainingData.houses.size,
+            modelWeight = model.params.w,
+            modelBias = model.params.b,
+        )
+    }
+
+    fun getHouseCacheStats(): HouseCacheStatsResponse {
+        val stats = houseService.cacheStats()
+        val totalAccesses = stats.hits + stats.misses
+        val hitRate =
+            if (totalAccesses == 0L) 0.0 else stats.hits.toDouble() / totalAccesses.toDouble()
+
+        return HouseCacheStatsResponse(
+            limit = stats.limit,
+            size = stats.size,
+            hits = stats.hits,
+            misses = stats.misses,
+            hitRate = hitRate,
+        )
     }
 
     fun deleteHouse(
@@ -249,13 +355,13 @@ class HousesServices(
                 startDateRaw = request.startDate,
                 endDateRaw = request.endDate,
             )
-
         return CreateBookingResponse(
             id = booking.id.toString(),
             hid = booking.hid.toString(),
             uid = booking.uid.toString(),
             startDate = booking.startDate.toString(),
             endDate = booking.endDate.toString(),
+            token = user.token.toString(),
         )
     }
 
@@ -298,6 +404,15 @@ class HousesServices(
         requireHouseOwnership(user, hid)
 
         val bookings = bookingService.listBookings(hidUuid, Date.of(dateStart), Date.of(dateEnd)).page(paging)
+        return ListBookingsResponse(bookings)
+    }
+
+    fun listMyBookings(
+        token: Uuid,
+        paging: Paging,
+    ): ListBookingsResponse {
+        val user = requireUserByToken(token)
+        val bookings = bookingService.listBookingsByUser(user.id).map { it.toGetBookingResponse() }.page(paging)
         return ListBookingsResponse(bookings)
     }
 
@@ -373,4 +488,12 @@ class HousesServices(
     ): Uuid =
         runCatching { Uuid.parse(raw.trim()) }
             .getOrElse { throw IllegalArgumentException("Invalid $label.") }
+
+    companion object {
+        private const val BOOTSTRAP_USER_NAME = "Principal Demo"
+        private const val BOOTSTRAP_USER_EMAIL = "principal.demo@houses.local"
+        private const val BOOTSTRAP_LOCATION_NAME = "Demo Country"
+        private const val BOOTSTRAP_FREE_HOUSE_TITLE = "Casa Demo Livre"
+        private const val BOOTSTRAP_BUSY_HOUSE_TITLE = "Casa Demo Ocupada"
+    }
 }

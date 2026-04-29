@@ -34,7 +34,8 @@ data class CreateLocationResponse(
     val id: String,
     val name: String,
     val type: String,
-    val parentId: String?
+    val parentId: String?,
+    val token: String? = null,
 )
 
 @Serializable

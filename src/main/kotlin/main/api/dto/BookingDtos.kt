@@ -28,6 +28,7 @@ data class CreateBookingResponse(
     val uid: String,
     val startDate: String,
     val endDate: String,
+    val token: String? = null,
 )
 
 @Serializable

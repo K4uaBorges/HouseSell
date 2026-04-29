@@ -1,19 +1,24 @@
 package main.api.http_server
 
+import org.http4k.routing.ResourceLoader
+import org.http4k.routing.bind
+import org.http4k.routing.routes
+import org.http4k.routing.singlePageApp
 import org.http4k.server.Http4kServer
 import org.http4k.server.Undertow
 import org.http4k.server.asServer
 
-/**
- * Alterar quando obtiver a certeza da porta de entrar que realmente o servidor irá ter,
- * Por enquanto mantem a porta de entrada da database
- */
-
 class HousesRouter(
     private val webApi: HousesWebApi,
-    private val port: Int = 5433,
-    ) {
-        fun start(): Http4kServer = webApi.routes.asServer(Undertow(port)).start()
-    }
+    private val port: Int = 8080,
+) {
+    private val spa = singlePageApp(ResourceLoader.Directory("static-content"))
 
+    private val app =
+        routes(
+            "/api" bind webApi.routes,
+            "/" bind spa,
+        )
 
+    fun start(): Http4kServer = app.asServer(Undertow(port)).start()
+}

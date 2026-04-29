@@ -1,5 +1,6 @@
 package domain_model.house
 
+import main.data.impl.caches.HouseInfoCache
 import main.data.impl.mem.InMemoryHouseRepository
 import main.domain_model.house.HouseService
 import kotlin.test.BeforeTest
@@ -12,7 +13,7 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalUuidApi::class)
 class HouseServiceTest {
     private val repo = InMemoryHouseRepository
-    private val service = HouseService(repo)
+    private val service = HouseService(repo, HouseInfoCache(limit = 100))
 
     @BeforeTest
     fun setup() {

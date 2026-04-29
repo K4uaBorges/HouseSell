@@ -2,6 +2,8 @@ package main.domain_model.house
 
 import main.api.dto.AvailableHouseResponse
 import main.api.dto.GetHouseResponse
+import main.data.impl.caches.HouseCacheStats
+import main.data.impl.caches.HouseInfoCache
 import main.data.interfaces.HouseRepository
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -9,6 +11,7 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalUuidApi::class)
 class HouseService(
     private val repo: HouseRepository,
+    private val cache: HouseInfoCache = HouseInfoCache(0),
 ) {
     fun createHouse(
         ownerId: Uuid,
@@ -32,10 +35,11 @@ class HouseService(
             )
 
         house.certified
-        return repo.create(house)
+        return repo.create(house).also { cache.put(it.id, it) }
     }
 
-    fun getHouseById(id: Uuid): House = repo.getById(id)
+    fun getHouseById(id: Uuid): House =
+        cache.getById(id) ?: repo.getById(id).also { cache.put(id, it) }
 
     fun getHouseInfoById(id: Uuid): GetHouseResponse = getHouseById(id).toGetHouseResponse()
 
@@ -43,7 +47,10 @@ class HouseService(
 
     fun listHousesByOwner(ownerId: Uuid): List<House> = repo.getAll().filter { it.uid == ownerId }.sortedBy { it.title.value }
 
-    fun deleteHouse(id: Uuid) = repo.deleteById(id)
+    fun deleteHouse(id: Uuid) {
+        repo.deleteById(id)
+        cache.removeById(id)
+    }
 
     fun updateHouse(
         id: Uuid,
@@ -63,8 +70,10 @@ class HouseService(
                 description = descriptionRaw,
             )
         upHouse.certified
-        return repo.update(upHouse)
+        return repo.update(upHouse).also { cache.put(it.id, it) }
     }
+
+    fun cacheStats(): HouseCacheStats = cache.stats()
 
     private val House.certified get() =
         run {

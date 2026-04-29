@@ -1,5 +1,6 @@
 package main.data.impl.jdbc
 
+import main.data.impl.caches.HouseInfoCache
 import main.data.interfaces.HouseRepository
 import main.domain_model.house.House
 import main.domain_model.house.Title
@@ -15,6 +16,7 @@ import kotlin.uuid.Uuid
 @OptIn(ExperimentalUuidApi::class)
 class JdbcHouseRepository(
     private val dataSource: DataSource,
+    private val cache: HouseInfoCache = HouseInfoCache(0),
 ) : HouseRepository {
     override fun create(value: House): House =
         withDatabaseHandling("creating house") {
@@ -49,6 +51,7 @@ class JdbcHouseRepository(
                 }
             }
         }
+        cache.removeById(key)
     }
 
     override fun clear() {
@@ -59,56 +62,61 @@ class JdbcHouseRepository(
                 }
             }
         }
+        cache.clear()
     }
 
-    override fun save(value: House): House =
-        withDatabaseHandling("updating house") {
-            getById(value.id)
-            dataSource.connection.use { conn ->
-                conn
-                    .prepareStatement(
-                        """
-                        update houses
-                        set uid = ?, title = ?, location = ?, areasqmt = ?, pricepernight = ?, description = ?
-                        where hid = ?
-                        """.trimIndent(),
-                    ).use { stmt ->
-                        stmt.setObject(1, toJavaUuid(value.uid))
-                        stmt.setString(2, value.title.value)
-                        stmt.setObject(3, toJavaUuid(value.lid))
-                        stmt.setInt(4, value.areaSqMt)
-                        stmt.setDouble(5, value.pricePerNight)
-                        stmt.setString(6, value.description)
-                        stmt.setObject(7, toJavaUuid(value.id))
-                        val updated = stmt.executeUpdate()
-                        if (updated == 0) throw NoHouseExist("House not found.")
-                    }
-            }
-            value
-        }
+    override fun update(updated: House): House = save(updated)
 
-    override fun update(updated: House): House =
-        save(updated)
+    override fun save(value: House): House {
+        val value =
+            withDatabaseHandling("updating house") {
+                getById(value.id)
+                dataSource.connection.use { conn ->
+                    conn
+                        .prepareStatement(
+                            """
+                            update houses
+                            set uid = ?, title = ?, location = ?, areasqmt = ?, pricepernight = ?, description = ?
+                            where hid = ?
+                            """.trimIndent(),
+                        ).use { stmt ->
+                            stmt.setObject(1, toJavaUuid(value.uid))
+                            stmt.setString(2, value.title.value)
+                            stmt.setObject(3, toJavaUuid(value.lid))
+                            stmt.setInt(4, value.areaSqMt)
+                            stmt.setDouble(5, value.pricePerNight)
+                            stmt.setString(6, value.description)
+                            stmt.setObject(7, toJavaUuid(value.id))
+                            val updated = stmt.executeUpdate()
+                            if (updated == 0) throw NoHouseExist("House not found.")
+                        }
+                }
+                value
+            }
+        cache.put(value.id, value)
+        return value
+    }
 
     override fun getById(key: Uuid): House =
-        withDatabaseHandling("getting house by id") {
-            dataSource.connection.use { conn ->
-                conn
-                    .prepareStatement(
-                        """
-                        select hid, uid, title, location, areasqmt, pricepernight, description
-                        from houses
-                        where hid = ?
-                        """.trimIndent(),
-                    ).use { stmt ->
-                        stmt.setObject(1, toJavaUuid(key))
-                        stmt.executeQuery().use { rs ->
-                            if (!rs.next()) throw NoHouseExist("House not found.")
-                            mapHouse(rs)
+        cache.getById(key)
+            ?: withDatabaseHandling("getting house by id") {
+                dataSource.connection.use { conn ->
+                    conn
+                        .prepareStatement(
+                            """
+                            select hid, uid, title, location, areasqmt, pricepernight, description
+                            from houses
+                            where hid = ?
+                            """.trimIndent(),
+                        ).use { stmt ->
+                            stmt.setObject(1, toJavaUuid(key))
+                            stmt.executeQuery().use { rs ->
+                                if (!rs.next()) throw NoHouseExist("House not found.")
+                                mapHouse(rs).also { cache.put(key, it) }
+                            }
                         }
-                    }
+                }
             }
-        }
 
     override fun getAll(): List<House> =
         withDatabaseHandling("listing houses") {
@@ -142,7 +150,10 @@ class JdbcHouseRepository(
             description = rs.getString("description"),
         )
 
-    private fun <T> withDatabaseHandling(operation: String, block: () -> T): T =
+    private fun <T> withDatabaseHandling(
+        operation: String,
+        block: () -> T,
+    ): T =
         try {
             block()
         } catch (error: SQLException) {

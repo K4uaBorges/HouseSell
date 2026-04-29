@@ -1,0 +1,136 @@
+import { a, button, div, form, h2, input, label, li, p, pre, ul } from "../dsl/dsl.js"
+
+function createTitle(text) {
+    return h2({ class: "h4 mb-3" }, text)
+}
+
+function createAlert(message, type = "danger") {
+    return div({ class: `alert alert-${type}` }, message)
+}
+
+function createJsonPre(data) {
+    return pre({ class: "bg-light border rounded p-3" }, JSON.stringify(data, null, 2))
+}
+
+function createLinkList(items, toHref, toText) {
+    return ul(
+        { class: "list-group" },
+        items.map(item =>
+            li(
+                { class: "list-group-item" },
+                a({ href: toHref(item) }, toText(item)),
+            ),
+        ),
+    )
+}
+
+function replaceMain(mainContent, node) {
+    if (!mainContent) return
+    mainContent.replaceChildren(node)
+}
+
+function buildPage(title, ...children) {
+    return div(createTitle(title), ...children)
+}
+
+function createLinkedOrEmpty(items, emptyMessage, toHref, toText) {
+    if (!items.length) return createAlert(emptyMessage, "secondary")
+    return createLinkList(items, toHref, toText)
+}
+
+function buildHashWithInlineQuery(baseHashPath, query = {}) {
+    const normalizedBase =
+        String(baseHashPath || "")
+            .trim()
+            .replace(/^#/, "")
+            .replace(/^\/+/, "")
+            .replace(/\/+$/, "")
+    const search = new URLSearchParams()
+
+    for (const [key, value] of Object.entries(query)) {
+        if (value === null || value === undefined) continue
+        const trimmed = String(value).trim()
+        if (!trimmed) continue
+        search.set(key, trimmed)
+    }
+
+    const queryString = search.toString()
+    return queryString ? `#${normalizedBase}/${queryString}` : `#${normalizedBase}`
+}
+
+function createDateSearchForm(
+    baseHashPath,
+    startValue,
+    endValue,
+    buttonLabel = "Pesquisar",
+    startKey = "dateStart",
+    endKey = "dateEnd",
+) {
+    const startDateInput =
+        input({
+            class: "form-control",
+            type: "date",
+            required: true,
+            value: startValue,
+        })
+    const endDateInput =
+        input({
+            class: "form-control",
+            type: "date",
+            required: true,
+            value: endValue,
+        })
+
+    return form(
+        {
+            class: "row g-2 align-items-end mb-3",
+            onsubmit: event => {
+                event.preventDefault()
+                const startDate = startDateInput.value.trim()
+                const endDate = endDateInput.value.trim()
+                window.location.hash =
+                    buildHashWithInlineQuery(
+                        baseHashPath,
+                        {
+                            [startKey]: startDate,
+                            [endKey]: endDate,
+                        },
+                    )
+            },
+        },
+        div(
+            { class: "col-sm-4" },
+            label({ class: "form-label" }, startKey),
+            startDateInput,
+        ),
+        div(
+            { class: "col-sm-4" },
+            label({ class: "form-label" }, endKey),
+            endDateInput,
+        ),
+        div(
+            { class: "col-sm-4" },
+            button({ type: "submit", class: "btn btn-primary" }, buttonLabel),
+        ),
+    )
+}
+
+export {
+    a,
+    buildPage,
+    button,
+    createAlert,
+    createDateSearchForm,
+    createJsonPre,
+    createLinkList,
+    createLinkedOrEmpty,
+    div,
+    form,
+    h2,
+    input,
+    label,
+    li,
+    p,
+    replaceMain,
+    ul,
+}

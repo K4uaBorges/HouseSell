@@ -1,0 +1,1112 @@
+openapi: 3.0.3
+info:
+  title: Houses Rental API
+  description: |
+    API de gestão de aluguer de casas (Houses API). 
+    Sistema completo para gestão de utilizadores, localizações, casas e reservas.
+    
+    ## Autenticação
+    A API utiliza autenticação Bearer Token (UUID). 
+    O token é obtido aquando da criação do utilizador (`POST /users`) e deve ser incluído no header `Authorization: Bearer {token}`.
+    
+    ## Paginação
+    Endpoints de listagem suportam paginação via query parameters:
+    - `skip`: Número de registos a ignorar (default: 0)
+    - `limit`: Máximo de registos a retornar (default: 20, max: 100)
+  version: 0.1.0
+  contact:
+    name: ISEL LEIC Grupo 07
+
+servers:
+  - url: http://localhost:8080
+    description: Servidor local (fallback se PORT não estiver definida)
+  - url: http://localhost:5433
+    description: Servidor local (porta definida no env PORT=5433)
+
+tags:
+  - name: Users
+    description: Gestão de utilizadores e autenticação
+  - name: Locations
+    description: Gestão hierárquica de localizações (País > Região > Distrito > Município > Localidade)
+  - name: Houses
+    description: Gestão de anúncios de casas
+  - name: Bookings
+    description: Gestão de reservas e disponibilidade
+
+security:
+  - BearerAuth: []
+
+paths:
+  # ==================== USERS ====================
+  /users:
+    post:
+      summary: Criar novo utilizador
+      description: Cria um utilizador com token único. Requer autenticação.
+      tags: [Users]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Utilizador criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      summary: Listar utilizadores
+      description: Lista todos os utilizadores com paginação.
+      tags: [Users]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SkipParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Lista de utilizadores
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListUsersResponse'
+
+  /users/{uid}:
+    get:
+      summary: Obter utilizador por ID
+      tags: [Users]
+      security: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID único do utilizador
+      responses:
+        '200':
+          description: Detalhes do utilizador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Atualizar utilizador
+      description: Atualiza nome e email do utilizador.
+      tags: [Users]
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Utilizador atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetUserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Eliminar utilizador
+      tags: [Users]
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteUserRequest'
+      responses:
+        '200':
+          description: Utilizador eliminado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteUserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== LOCATIONS ====================
+  /locations:
+    post:
+      summary: Criar localização
+      description: |
+        Cria uma nova localização na hierarquia geográfica.
+        Tipos permitidos: COUNTRY, REGION, DISTRICT, MUNICIPALITY, LOCALITY.
+        COUNTRY não pode ter parentId; outros tipos devem ter parentId válido.
+      tags: [Locations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLocationRequest'
+      responses:
+        '201':
+          description: Localização criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateLocationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      summary: Listar todas as localizações
+      tags: [Locations]
+      security: []
+      responses:
+        '200':
+          description: Lista de localizações
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListLocationsResponse'
+
+  /locations/{lid}:
+    get:
+      summary: Obter localização por ID
+      description: Retorna detalhes incluindo o caminho hierárquico completo (fullPath).
+      tags: [Locations]
+      security: []
+      parameters:
+        - name: lid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da localização
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetLocationResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Atualizar localização
+      tags: [Locations]
+      parameters:
+        - name: lid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLocationRequest'
+      responses:
+        '200':
+          description: Localização atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetLocationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Eliminar localização
+      description: Só é possível eliminar localizações sem filhos e não utilizadas.
+      tags: [Locations]
+      parameters:
+        - name: lid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteLocationRequest'
+      responses:
+        '200':
+          description: Localização eliminada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteLocationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /locations/{lid}/childrenAll:
+    get:
+      summary: Listar todos os descendentes
+      description: Retorna todos os filhos, netos, etc. da localização (recursivo).
+      tags: [Locations]
+      security: []
+      parameters:
+        - name: lid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de localizações descendentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationSummary'
+
+  /locations/{lid}/childrenDirect:
+    get:
+      summary: Listar filhos diretos
+      description: Retorna apenas os filhos diretos (nível imediatamente abaixo).
+      tags: [Locations]
+      security: []
+      parameters:
+        - name: lid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de localizações filhas diretas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationSummary'
+
+  /locations/{lid}/path:
+    get:
+      summary: Obter caminho hierárquico
+      description: Retorna o caminho desde a raiz até esta localização.
+      tags: [Locations]
+      security: []
+      parameters:
+        - name: lid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Caminho hierárquico
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationPathEntry'
+
+  # ==================== HOUSES ====================
+  /houses:
+    get:
+      summary: Listar casas disponíveis (geral)
+      description: |
+        Lista casas disponíveis para amanhã (default: hoje até amanhã).
+        Utiliza paginação.
+      tags: [Houses]
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SkipParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Lista de casas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListHousesResponse'
+
+    post:
+      summary: Criar anúncio de casa
+      description: Cria um novo anúncio de casa. O utilizador autenticado torna-se proprietário.
+      tags: [Houses]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHouseRequest'
+      responses:
+        '201':
+          description: Casa criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateHouseResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /houses/mine:
+    get:
+      summary: Listar minhas casas
+      description: Lista casas do utilizador autenticado.
+      tags: [Houses]
+      parameters:
+        - $ref: '#/components/parameters/SkipParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Lista de casas do utilizador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListHousesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /houses/available:
+    get:
+      summary: Procurar casas disponíveis por datas
+      description: Lista casas disponíveis num período específico.
+      tags: [Houses]
+      security: []
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-04-01"
+          description: Data de início (YYYY-MM-DD)
+        - name: endDate
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-04-07"
+          description: Data de fim (YYYY-MM-DD)
+        - $ref: '#/components/parameters/SkipParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Lista de casas disponíveis
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAvailableHousesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /houses/{hid}:
+    get:
+      summary: Obter detalhes da casa
+      tags: [Houses]
+      security: []
+      parameters:
+        - name: hid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da casa
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetHouseResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Atualizar casa
+      description: Apenas o proprietário pode atualizar a casa.
+      tags: [Houses]
+      parameters:
+        - name: hid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateHouseRequest'
+      responses:
+        '200':
+          description: Casa atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetHouseResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Eliminar casa
+      description: |
+        Elimina o anúncio da casa. 
+        **Restrição:** Não é possível eliminar casas com reservas existentes.
+      tags: [Houses]
+      parameters:
+        - name: hid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteHouseRequest'
+      responses:
+        '200':
+          description: Casa eliminada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteHouseResponse'
+        '400':
+          description: Casa tem reservas existentes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ==================== BOOKINGS ====================
+  /bookings:
+    post:
+      summary: Criar reserva
+      description: |
+        Cria uma nova reserva para uma casa.
+        Verifica automaticamente disponibilidade (não permite sobreposições).
+      tags: [Bookings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Reserva criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBookingResponse'
+        '400':
+          description: Datas inválidas ou casa não disponível
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      summary: Listar reservas de uma casa
+      description: |
+        Lista reservas de uma casa num período específico.
+        Apenas o proprietário da casa pode ver as reservas.
+      tags: [Bookings]
+      parameters:
+        - name: hid
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID da casa
+        - name: dateStart
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Data inicial do período (YYYY-MM-DD)
+        - name: dateEnd
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Data final do período (YYYY-MM-DD)
+        - $ref: '#/components/parameters/SkipParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Lista de reservas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListBookingsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /bookings/{bid}:
+    get:
+      summary: Obter detalhes da reserva
+      description: Acessível pelo utilizador que fez a reserva ou pelo proprietário da casa.
+      tags: [Bookings]
+      parameters:
+        - name: bid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Detalhes da reserva
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBookingResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Atualizar reserva
+      description: |
+        Modifica datas ou casa da reserva.
+        Re-verifica disponibilidade (exceto a própria reserva).
+      tags: [Bookings]
+      parameters:
+        - name: bid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookingRequest'
+      responses:
+        '200':
+          description: Reserva atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetBookingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Cancelar reserva
+      description: Acessível pelo utilizador que fez a reserva ou pelo proprietário.
+      tags: [Bookings]
+      parameters:
+        - name: bid
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteBookingRequest'
+      responses:
+        '200':
+          description: Reserva cancelada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteBookingResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  # ==================== SECURITY ====================
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: UUID
+      description: |
+        Token UUID obtido na criação do utilizador.
+        Exemplo: `Bearer 123e4567-e89b-12d3-a456-426614174000`
+
+  # ==================== PARAMETERS ====================
+  parameters:
+    SkipParam:
+      name: skip
+      in: query
+      description: Número de registos a ignorar
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+
+    LimitParam:
+      name: limit
+      in: query
+      description: Máximo de registos a retornar
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  # ==================== RESPONSES ====================
+  responses:
+    BadRequest:
+      description: Pedido inválido (JSON malformado, dados inválidos ou regras de negócio violadas)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+    Unauthorized:
+      description: Não autorizado (token em falta, inválido ou expirado)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+    NotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+
+  # ==================== SCHEMAS ====================
+  schemas:
+    # ---- Error ----
+    ApiError:
+      type: object
+      properties:
+        status:
+          type: integer
+          description: Código HTTP do erro
+        error:
+          type: string
+          description: Mensagem descritiva do erro
+
+    # ---- Users ----
+    CreateUserRequest:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 50
+          description: Nome do utilizador (3-50 caracteres)
+        email:
+          type: string
+          format: email
+          description: Email válido e único
+
+    UpdateUserRequest:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 50
+        email:
+          type: string
+          format: email
+
+    DeleteUserRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: ID para confirmação (deve coincidir com o path)
+
+    CreateUserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+        token:
+          type: string
+          format: uuid
+          description: Token de autenticação para futuros pedidos
+
+    GetUserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+
+    DeleteUserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        deleted:
+          type: boolean
+
+    ListUsersResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/GetUserResponse'
+
+    # ---- Locations ----
+    CreateLocationRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 100
+          description: Nome da localização
+        type:
+          type: string
+          enum: [COUNTRY, REGION, DISTRICT, MUNICIPALITY, LOCALITY]
+          description: Tipo hierárquico da localização
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            ID da localização pai. 
+            Obrigatório para todos exceto COUNTRY. 
+            Deve ser null para COUNTRY.
+
+    UpdateLocationRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateLocationRequest'
+
+    DeleteLocationRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    CreateLocationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+
+    LocationPathEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+
+    GetLocationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        parentId:
+          type: string
+          nullable: true
+        fullPath:
+          type: array
+          description: Caminho hierárquico completo (raiz até ao nó atual)
+          items:
+            $ref: '#/components/schemas/LocationPathEntry'
+
+    DeleteLocationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        deleted:
+          type: boolean
+
+    LocationSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+
+    ListLocationsResponse:
+      type: object
+      properties:
+        locations:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationSummary'
+
+    # ---- Houses ----
+    CreateHouseRequest:
+      type: object
+      required: [title, lid, areaSqMt, pricePerNight, description]
+      properties:
+        title:
+          type: string
+          minLength: 3
+          maxLength: 100
+          description: Título do anúncio
+        lid:
+          type: string
+          format: uuid
+          description: ID da localização
+        areaSqMt:
+          type: integer
+          minimum: 1
+          description: Área em metros quadrados
+        pricePerNight:
+          type: number
+          format: double
+          minimum: 0.01
+          description: Preço por noite em euros
+        description:
+          type: string
+          minLength: 1
+          description: Descrição detalhada
+
+    UpdateHouseRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateHouseRequest'
+
+    DeleteHouseRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    CreateHouseResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        uid:
+          type: string
+          format: uuid
+          description: ID do proprietário
+        title:
+          type: string
+        lid:
+          type: string
+        areaSqMt:
+          type: integer
+        pricePerNight:
+          type: number
+        description:
+          type: string
+
+    GetHouseResponse:
+      allOf:
+        - $ref: '#/components/schemas/CreateHouseResponse'
+
+    DeleteHouseResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        deleted:
+          type: boolean
+
+    ListHousesResponse:
+      type: object
+      properties:
+        houses:
+          type: array
+          items:
+            $ref: '#/components/schemas/GetHouseResponse'
+
+    AvailableHouseResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        uid:
+          type: string
+        title:
+          type: string
+        lid:
+          type: string
+        areaSqMt:
+          type: integer
+        pricePerNight:
+          type: number
+        description:
+          type: string
+
+    ListAvailableHousesResponse:
+      type: object
+      properties:
+        houses:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailableHouseResponse'
+
+    # ---- Bookings ----
+    CreateBookingRequest:
+      type: object
+      required: [hid, startDate, endDate]
+      properties:
+        hid:
+          type: string
+          format: uuid
+          description: ID da casa a reservar
+        startDate:
+          type: string
+          format: date
+          description: Data de entrada (YYYY-MM-DD)
+        endDate:
+          type: string
+          format: date
+          description: Data de saída (YYYY-MM-DD)
+
+    UpdateBookingRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateBookingRequest'
+
+    DeleteBookingRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+
+    CreateBookingResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        hid:
+          type: string
+        uid:
+          type: string
+          description: ID do utilizador que fez a reserva
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    GetBookingResponse:
+      allOf:
+        - $ref: '#/components/schemas/CreateBookingResponse'
+
+    DeleteBookingResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        deleted:
+          type: boolean
+
+    ListBookingsResponse:
+      type: object
+      properties:
+        bookings:
+          type: array
+          items:
+            $ref: '#/components/schemas/GetBookingResponse'

@@ -1,7 +1,7 @@
 package main.data.impl.mem
 
 import main.data.interfaces.LocationRepository
-import main.domain_model.location.Location
+import main.domain.location.Location
 import main.errors.NoLocationExist
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -27,8 +27,7 @@ object InMemoryLocationRepository : LocationRepository {
         return directChildren + directChildren.flatMap { getChildrenAll(it.id) }
     }
 
-    override fun getChildrenDirect(parentId: Uuid): List<Location> =
-        locations.values.filter { it.parentId == parentId }
+    override fun getChildrenDirect(parentId: Uuid): List<Location> = locations.values.filter { it.parentId == parentId }
 
     override fun getFullPath(id: Uuid): List<Location> {
         val path = mutableListOf<Location>()

@@ -1,4 +1,5 @@
-import { a, button, div, form, h2, input, label, li, p, pre, ul } from "../dsl/dsl.js"
+import { a, button, div, form, h1, h2, input, label, li, option, p, pre, select, ul } from "../dsl/dsl.js"
+import { clearFieldValidation, validateDateRange } from "../utis/formValidation.js"
 
 function createTitle(text) {
     return h2({ class: "h4 mb-3" }, text)
@@ -58,6 +59,13 @@ function buildHashWithInlineQuery(baseHashPath, query = {}) {
     return queryString ? `#${normalizedBase}/${queryString}` : `#${normalizedBase}`
 }
 
+function nextIsoDate(value) {
+    const date = new Date(String(value || "").trim())
+    if (Number.isNaN(date.getTime())) return ""
+    date.setDate(date.getDate() + 1)
+    return date.toISOString().slice(0, 10)
+}
+
 function createDateSearchForm(
     baseHashPath,
     startValue,
@@ -81,6 +89,22 @@ function createDateSearchForm(
             value: endValue,
         })
 
+    const syncDateConstraints = () => {
+        const nextDay = nextIsoDate(startDateInput.value)
+        if (nextDay) {
+            endDateInput.min = nextDay
+        } else {
+            endDateInput.removeAttribute("min")
+        }
+    }
+
+    startDateInput.addEventListener("input", () => {
+        syncDateConstraints()
+        clearFieldValidation(endDateInput)
+    })
+    endDateInput.addEventListener("input", () => clearFieldValidation(endDateInput))
+    syncDateConstraints()
+
     return form(
         {
             class: "row g-2 align-items-end mb-3",
@@ -88,6 +112,7 @@ function createDateSearchForm(
                 event.preventDefault()
                 const startDate = startDateInput.value.trim()
                 const endDate = endDateInput.value.trim()
+                if (!validateDateRange(startDateInput, endDateInput)) return
                 window.location.hash =
                     buildHashWithInlineQuery(
                         baseHashPath,
@@ -126,11 +151,14 @@ export {
     createLinkedOrEmpty,
     div,
     form,
+    h1,
     h2,
     input,
     label,
     li,
+    option,
     p,
     replaceMain,
+    select,
     ul,
 }

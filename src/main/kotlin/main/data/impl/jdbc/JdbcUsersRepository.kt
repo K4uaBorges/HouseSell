@@ -1,15 +1,16 @@
 package main.data.impl.jdbc
 
-import main.domain_model.user.Email
-import main.domain_model.user.Name
-import main.domain_model.user.User
+import main.data.interfaces.UsersRepository
+import main.domain.user.Email
+import main.domain.user.Name
+import main.domain.user.User
+import main.domain.user.UserRole
 import main.errors.NoUserExist
 import main.errors.UsersRepositoryDatabaseException
-import main.data.interfaces.UsersRepository
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.util.*
+import java.util.UUID
 import javax.sql.DataSource
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -19,19 +20,21 @@ class JdbcUsersRepository(
     private val dataSource: DataSource,
 ) : UsersRepository {
     override fun create(value: User): User =
-        withDatabaseHandling("creating user") {
+        withDatabaseHandling("creating users") {
             dataSource.connection.use { conn ->
                 conn
                     .prepareStatement(
                         """
-                        insert into users (uid, name, email, token)
-                        values (?, ?, ?, ?)
+                        insert into users (uid, name, email, password_hash, token, role)
+                        values (?, ?, ?, ?, ?, ?)
                         """.trimIndent(),
                     ).use { stmt ->
                         stmt.setObject(1, toJavaUuid(value.id))
                         stmt.setString(2, value.name.value)
                         stmt.setString(3, value.email.value)
-                        stmt.setObject(4, toJavaUuid(value.token))
+                        stmt.setString(4, value.passwordHash)
+                        stmt.setObject(5, toJavaUuid(value.token))
+                        stmt.setString(6, value.role.name)
                         stmt.executeUpdate()
                     }
             }
@@ -39,21 +42,23 @@ class JdbcUsersRepository(
         }
 
     override fun save(value: User): User =
-        withDatabaseHandling("updating user") {
+        withDatabaseHandling("updating users") {
             getById(value.id)
             dataSource.connection.use { conn ->
                 conn
                     .prepareStatement(
                         """
                         update users
-                        set name = ?, email = ?, token = ?
+                        set name = ?, email = ?, password_hash = ?, token = ?, role = ?
                         where uid = ?
                         """.trimIndent(),
                     ).use { stmt ->
                         stmt.setString(1, value.name.value)
                         stmt.setString(2, value.email.value)
-                        stmt.setObject(3, toJavaUuid(value.token))
-                        stmt.setObject(4, toJavaUuid(value.id))
+                        stmt.setString(3, value.passwordHash)
+                        stmt.setObject(4, toJavaUuid(value.token))
+                        stmt.setString(5, value.role.name)
+                        stmt.setObject(6, toJavaUuid(value.id))
                         val updated = stmt.executeUpdate()
                         if (updated == 0) throw NoUserExist("User not found.")
                     }
@@ -64,7 +69,7 @@ class JdbcUsersRepository(
     override fun update(updated: User): User = save(updated)
 
     override fun deleteById(key: Uuid) {
-        withDatabaseHandling("deleting user") {
+        withDatabaseHandling("deleting users") {
             dataSource.connection.use { conn ->
                 conn.prepareStatement("delete from users where uid = ?").use { stmt ->
                     stmt.setObject(1, toJavaUuid(key))
@@ -77,19 +82,19 @@ class JdbcUsersRepository(
 
     override fun getById(key: Uuid): User =
         querySingle(
-            sql = "select uid, name, email, token from users where uid = ?",
+            sql = "select uid, name, email, password_hash, token, role from users where uid = ?",
             binder = { it.setObject(1, toJavaUuid(key)) },
         )
 
     override fun getByToken(token: Uuid): User =
         querySingle(
-            sql = "select uid, name, email, token from users where token = ?",
+            sql = "select uid, name, email, password_hash, token, role from users where token = ?",
             binder = { it.setObject(1, toJavaUuid(token)) },
         )
 
     override fun getByEmail(email: String): User =
         querySingle(
-            sql = "select uid, name, email, token from users where email = ?",
+            sql = "select uid, name, email, password_hash, token, role from users where email = ?",
             binder = { it.setString(1, email.trim()) },
         )
 
@@ -99,7 +104,7 @@ class JdbcUsersRepository(
                 conn
                     .prepareStatement(
                         """
-                    |select uid, name, email, token from users
+                    |select uid, name, email, password_hash, token, role from users
                         """.trimMargin(),
                     ).use { stmt ->
                         stmt.executeQuery().use { rs ->
@@ -144,7 +149,9 @@ class JdbcUsersRepository(
             id = Uuid.parse(rs.getObject("uid", UUID::class.java).toString()),
             name = Name.of(rs.getString("name")),
             email = Email.of(rs.getString("email")),
+            passwordHash = rs.getString("password_hash"),
             token = Uuid.parse(rs.getObject("token", UUID::class.java).toString()),
+            role = UserRole.valueOf(rs.getString("role").trim().uppercase()),
         )
 
     private fun <T> withDatabaseHandling(

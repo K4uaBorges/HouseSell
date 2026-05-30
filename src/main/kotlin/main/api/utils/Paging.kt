@@ -6,7 +6,10 @@ data class Paging(val skip: Int, val limit: Int) {
         const val DEFAULT_LIMIT = 20
         const val MAX_LIMIT = 100
 
-        fun of(skipRaw: String?, limitRaw: String?): Paging {
+        fun of(
+            skipRaw: String?,
+            limitRaw: String?,
+        ): Paging {
             val skip = skipRaw?.toIntOrNull() ?: DEFAULT_SKIP
             val limit = limitRaw?.toIntOrNull() ?: DEFAULT_LIMIT
 
@@ -19,5 +22,4 @@ data class Paging(val skip: Int, val limit: Int) {
     }
 }
 
-fun <T> List<T>.page(p: Paging): List<T> =
-    this.drop(p.skip).take(p.limit)
+fun <T> List<T>.page(p: Paging): List<T> = this.drop(p.skip).take(p.limit)

@@ -1,6 +1,25 @@
 import { createApiError } from "../error/createApiError.js"
 import { applyPassportAuthorization } from "../passport/passportAuth.js"
 import { syncTokenFromApiPayload } from "../token/tokenStorage.js"
+import { rememberApiBaseFromResolvedUrl } from "./buildUrl.js"
+
+function parseBody(rawBody) {
+    if (!rawBody) return null
+
+    try {
+        return JSON.parse(rawBody)
+    } catch {
+        return rawBody
+    }
+}
+
+function createHttpError(status, requestUrl, parsedBody) {
+    const apiMessage =
+        typeof parsedBody === "object" && parsedBody && "error" in parsedBody
+            ? parsedBody.error
+            : `HTTP ${status} (${requestUrl})`
+    return createApiError(status, apiMessage, parsedBody)
+}
 
 async function fetchJson(
     url,
@@ -18,26 +37,24 @@ async function fetchJson(
         payload = typeof body === "string" ? body : JSON.stringify(body)
     }
 
-    const response = await fetch(url, { method, headers, body: payload })
-    const rawBody = await response.text()
-
-    let parsedBody = null
-    if (rawBody) {
-        try {
-            parsedBody = JSON.parse(rawBody)
-        } catch {
-            parsedBody = rawBody
-        }
+    let response
+    try {
+        response = await fetch(url, { method, headers, body: payload })
+    } catch {
+        throw createApiError(
+            503,
+            `API indisponivel ou servidor desligado. URL: ${url}`,
+        )
     }
+
+    const rawBody = await response.text()
+    const parsedBody = parseBody(rawBody)
 
     if (!response.ok) {
-        const apiMessage =
-            typeof parsedBody === "object" && parsedBody && "error" in parsedBody
-                ? parsedBody.error
-                : `HTTP ${response.status} (${url})`
-        throw createApiError(response.status, apiMessage, parsedBody)
+        throw createHttpError(response.status, url, parsedBody)
     }
 
+    rememberApiBaseFromResolvedUrl(url)
     syncTokenFromApiPayload(parsedBody)
     return parsedBody
 }

@@ -1,7 +1,7 @@
 package main.data.impl.mem
 
 import main.data.interfaces.HouseRepository
-import main.domain_model.house.House
+import main.domain.house.House
 import main.errors.NoHouseExist
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -21,8 +21,7 @@ object InMemoryHouseRepository : HouseRepository {
         return value
     }
 
-    override fun update(updated: House): House =
-        save(updated)
+    override fun update(updated: House): House = save(updated)
 
     override fun getById(key: Uuid): House = housesById[key.toString()] ?: throw NoHouseExist("House not found.")
 

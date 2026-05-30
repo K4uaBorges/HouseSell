@@ -1,13 +1,13 @@
 package main.data.impl.jdbc
 
 import main.data.interfaces.BookingRepository
-import main.domain_model.booking.Booking
-import main.domain_model.booking.Date
+import main.domain.booking.Booking
+import main.domain.booking.Date
 import main.errors.BookingsRepositoryDatabaseException
 import main.errors.NoBookingExist
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.util.*
+import java.util.UUID
 import javax.sql.DataSource
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -163,7 +163,10 @@ class JdbcBookingRepository(
         )
     }
 
-    private fun <T> withDatabaseHandling(operation: String, block: () -> T): T =
+    private fun <T> withDatabaseHandling(
+        operation: String,
+        block: () -> T,
+    ): T =
         try {
             block()
         } catch (error: SQLException) {

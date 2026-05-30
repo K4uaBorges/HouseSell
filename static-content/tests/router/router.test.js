@@ -57,3 +57,20 @@ test("router calls custom notFound handler when route does not exist", async () 
 
     teardownDom()
 })
+
+test("router resolves nested house availability route", async () => {
+    setupDom()
+    const { default: router } = await importFresh("../../router/router.js")
+
+    let paramsSeen = null
+    router.addRoute("houses/:hid/available-days", (_mainContent, params) => {
+        paramsSeen = params
+    })
+
+    window.location.hash = "#houses/house-1/available-days"
+    router.hashChangeHandler(document.createElement("div"))
+
+    assert.deepEqual(paramsSeen, { hid: "house-1" })
+
+    teardownDom()
+})

@@ -2,7 +2,7 @@ package main.app.config
 
 import org.postgresql.ds.PGSimpleDataSource
 import java.io.File
-import java.util.*
+import java.util.Properties
 
 fun loadDotEnv(): Properties? {
     val projectDir = System.getProperty("user.dir")

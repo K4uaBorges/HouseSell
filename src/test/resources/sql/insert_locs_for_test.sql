@@ -1,6 +1,5 @@
 with countries as (
     insert into locations (lid, name, loc_type, parent_lid) values
-                                                                (gen_random_uuid(), 'CountryA', 'COUNTRY', null),
                                                                 (gen_random_uuid(), 'CountryB', 'COUNTRY', null),
                                                                 (gen_random_uuid(), 'CountryC', 'COUNTRY', null)
         RETURNING lid, name

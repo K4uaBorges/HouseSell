@@ -1,7 +1,7 @@
 package main.data.impl.mem
 
 import main.data.interfaces.UsersRepository
-import main.domain_model.user.User
+import main.domain.user.User
 import main.errors.NoUserExist
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -24,16 +24,14 @@ object InMemoryUsersRepository : UsersRepository {
         return value
     }
 
-    override fun update(updated: User): User =
-        save(updated)
+    override fun update(updated: User): User = save(updated)
 
     override fun deleteById(key: Uuid) {
         val removed = usersById.remove(key.toString()) ?: throw NoUserExist("User not found.")
         removeIndexes(removed)
     }
 
-    override fun getByEmail(email: String): User =
-        userIdByEmail[email]?.let(usersById::get) ?: throw NoUserExist("User not found.")
+    override fun getByEmail(email: String): User = userIdByEmail[email]?.let(usersById::get) ?: throw NoUserExist("User not found.")
 
     override fun getById(key: Uuid): User = usersById[key.toString()] ?: throw NoUserExist("User not found.")
 
@@ -45,12 +43,12 @@ object InMemoryUsersRepository : UsersRepository {
         val id = user.id.toString()
         usersById[id] = user
         usersByToken[user.token] = user
-        userIdByEmail[user.email.value] = id
+        userIdByEmail[user.email.value.trim()] = id
     }
 
     private fun removeIndexes(user: User) {
         usersByToken.remove(user.token)
-        userIdByEmail.remove(user.email.value)
+        userIdByEmail.remove(user.email.value.trim())
     }
 
     override fun clear() {

@@ -7,7 +7,11 @@ create table users (
    uid uuid primary key,
    name varchar(100) not null,
    email text not null unique,
-   token uuid not null unique
+   password_hash char(128) not null,
+   token uuid not null unique,
+   role text not null default 'USER',
+   constraint chk_user_role
+       check (role in ('ADMIN', 'USER'))
 );
 
 create table locations (

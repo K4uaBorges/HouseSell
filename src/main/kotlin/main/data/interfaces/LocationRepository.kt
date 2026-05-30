@@ -1,7 +1,6 @@
 package main.data.interfaces
 
-import main.domain_model.location.Location
-import main.data.interfaces.Repository
+import main.domain.location.Location
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 

@@ -1,6 +1,6 @@
 package main.data.interfaces
 
-import main.domain_model.user.User
+import main.domain.user.User
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 

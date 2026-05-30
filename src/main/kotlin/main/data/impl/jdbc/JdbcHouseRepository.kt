@@ -2,13 +2,13 @@ package main.data.impl.jdbc
 
 import main.data.impl.caches.HouseInfoCache
 import main.data.interfaces.HouseRepository
-import main.domain_model.house.House
-import main.domain_model.house.Title
+import main.domain.house.House
+import main.domain.house.Title
 import main.errors.HousesRepositoryDatabaseException
 import main.errors.NoHouseExist
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.util.*
+import java.util.UUID
 import javax.sql.DataSource
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid

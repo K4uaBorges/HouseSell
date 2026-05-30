@@ -11,7 +11,6 @@ data class CreateBookingRequest(
 
 @Serializable
 data class UpdateBookingRequest(
-    val hid: String,
     val startDate: String,
     val endDate: String,
 )
@@ -57,12 +56,11 @@ data class ListAvailableHousesResponse(
 )
 
 @Serializable
-data class AvailableHouseResponse(
-    val id: String,
-    val uid: String,
-    val title: String,
-    val lid: String,
-    val areaSqMt: Int,
-    val pricePerNight: Double,
-    val description: String,
+data class ListAvailableHouseDaysResponse(
+    val houseId: String,
+    val year: Int,
+    val month: Int,
+    val availableDays: List<String>,
 )
+
+typealias AvailableHouseResponse = GetHouseResponse

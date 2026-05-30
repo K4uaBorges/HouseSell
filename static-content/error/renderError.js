@@ -6,6 +6,12 @@ function shouldShowApiOriginHint(error) {
     return message.includes("/api/")
 }
 
+function shouldShowApiUnavailableHint(error) {
+    if (!error || error.status !== 503) return false
+    const message = String(error.message || "")
+    return message.includes("/api/")
+}
+
 function withError(mainContent, error) {
     const statusPrefix = error?.status ? `Erro ${error.status}: ` : "Erro: "
     const message = error?.message || "Falha ao processar pedido."
@@ -15,11 +21,17 @@ function withError(mainContent, error) {
         div(
             createAlert(`${statusPrefix}${message}`, type),
             error?.status === 401
-                ? createAlert("Sessão inválida. Recarrega a página para restaurar a sessão demo.", "warning")
+                ? createAlert("Sessão inválida. Faz login novamente para continuar.", "warning")
                 : null,
             shouldShowApiOriginHint(error)
                 ? createAlert(
-                    "API não encontrada neste servidor. Usa a app pelo backend ou adiciona ?apiBase=http://localhost:18080/api.",
+                    "API não encontrada neste servidor.",
+                    "warning",
+                )
+                : null,
+            shouldShowApiUnavailableHint(error)
+                ? createAlert(
+                    "Nao foi possivel ligar ao backend. Confirma que o servidor da API esta a correr.",
                     "warning",
                 )
                 : null,

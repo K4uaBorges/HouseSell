@@ -13,10 +13,12 @@ test("handlers modules export callable entry points", async () => {
     assert.equal(typeof bookings.getMyBookings, "function")
     assert.equal(typeof bookings.getBookingsByHouse, "function")
     assert.equal(typeof bookings.getBookingById, "function")
+    assert.equal(typeof bookings.getCreateBookingView, "function")
 
     assert.equal(typeof houses.getHouses, "function")
     assert.equal(typeof houses.getHouseById, "function")
     assert.equal(typeof houses.getHousesAvailable, "function")
+    assert.equal(typeof houses.getHouseAvailableDays, "function")
 
     assert.equal(typeof locations.getLocations, "function")
     assert.equal(typeof locations.getLocationById, "function")

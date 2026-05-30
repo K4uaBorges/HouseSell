@@ -1,7 +1,7 @@
 package main.data.impl.caches
 
 import main.data.interfaces.Cache
-import main.domain_model.house.House
+import main.domain.house.House
 import java.util.ArrayDeque
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid

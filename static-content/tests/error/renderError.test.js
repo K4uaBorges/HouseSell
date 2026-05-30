@@ -38,3 +38,16 @@ test("withError renders api origin hint for 404 on /api paths", async () => {
 
     teardownDom()
 })
+
+test("withError renders backend unavailable hint for 503 on /api paths", async () => {
+    setupDom()
+    const { withError } = await importFresh("../../error/renderError.js")
+
+    const mainContent = document.createElement("div")
+    withError(mainContent, { status: 503, message: "API indisponivel ou servidor desligado. URL: http://localhost:8081/api/session/login" })
+
+    assert.match(mainContent.textContent, /backend/i)
+    assert.match(mainContent.textContent, /servidor da API esta a correr/i)
+
+    teardownDom()
+})

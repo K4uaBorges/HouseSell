@@ -128,6 +128,9 @@ export const div = tag("div")
 // Titulo de secao de nivel 2.
 export const h2 = tag("h2")
 
+// Titulo principal da pagina.
+export const h1 = tag("h1")
+
 // Paragrafo para texto corrido.
 export const p = tag("p")
 
@@ -139,6 +142,12 @@ export const button = tag("button")
 
 // Campo de entrada de dados em formularios.
 export const input = tag("input")
+
+// Lista de selecao.
+export const select = tag("select")
+
+// Opcao dentro de select.
+export const option = tag("option")
 
 // Lista nao ordenada para colecoes de itens.
 export const ul = tag("ul")

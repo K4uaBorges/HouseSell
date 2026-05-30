@@ -1,114 +1,92 @@
 import {
+    a,
+    areComparableValuesEqual,
     buildPage,
     buildUrl,
     button,
-    clearFieldsValidation,
+    createSubmitGuard,
     createAlert,
-    createJsonPre,
-    createLinkList,
     createLinkedOrEmpty,
-    createPagingControls,
     div,
     fetchJson,
     form,
     input,
     label,
-    normalizePagingQuery,
+    p,
+    readSession,
     replaceMain,
     runAsync,
     validateEmail,
     validateRequired,
+    writeSession,
 } from "../utis/index.js"
 
-function createUserOptionsSection() {
-    const options = [
-        { href: "#houses/mine", text: "My Houses" },
-        { href: "#bookings/mine", text: "My Bookings" },
-    ]
+const USER_PREVIEW_LIMIT = 2
 
-    return div(
-        { class: "border rounded p-3 mb-3" },
-        div({ class: "mb-2 fw-semibold" }, "Opções do Utilizador"),
-        createLinkList(options, item => item.href, item => item.text),
-    )
+function normalizeListPayload(data, key) {
+    if (Array.isArray(data?.[key])) return data[key]
+    return []
 }
 
-function createUserForm(mainContent) {
-    const statusBox = div()
-    const nameInput = input({ class: "form-control", type: "text", required: true, placeholder: "Nome" })
-    const emailInput = input({ class: "form-control", type: "email", required: true, placeholder: "Email" })
-
-    return form(
-        {
-            class: "border rounded p-3 mb-3",
-            onsubmit: async event => {
-                event.preventDefault()
-                clearFieldsValidation([nameInput, emailInput])
-                const name = nameInput.value.trim()
-                const email = emailInput.value.trim()
-
-                const nameOk = validateRequired(nameInput, "name")
-                const emailOk = validateEmail(emailInput, "email")
-                if (!nameOk || !emailOk) {
-                    statusBox.replaceChildren(createAlert("Revê os campos assinalados.", "warning"))
-                    return
-                }
-
-                statusBox.replaceChildren(createAlert("A criar user...", "secondary"))
+async function fetchHouseTitles(bookings) {
+    const uniqueHouseIds = [...new Set(bookings.map(booking => booking.hid).filter(Boolean))]
+    const houses =
+        await Promise.all(
+            uniqueHouseIds.map(async houseId => {
                 try {
-                    const created = await fetchJson(
-                        buildUrl("/users"),
-                        { method: "POST", body: { name, email } },
-                    )
-
-                    statusBox.replaceChildren(
-                        createAlert(
-                            `User criado com sucesso (${created.id}). Token recebido da API e aplicado.`,
-                            "success",
-                        ),
-                    )
-                    window.location.hash = `#users/${encodeURIComponent(created.id)}`
-                } catch (error) {
-                    statusBox.replaceChildren(createAlert(error?.message || "Erro ao criar user.", "danger"))
+                    return await fetchJson(buildUrl(`/houses/${encodeURIComponent(houseId)}`))
+                } catch {
+                    return null
                 }
-            },
-        },
-        div({ class: "mb-2 fw-semibold" }, "Criar User"),
-        div(
-            { class: "row g-2" },
-            div({ class: "col-md-5" }, label({ class: "form-label" }, "name"), nameInput),
-            div({ class: "col-md-5" }, label({ class: "form-label" }, "email"), emailInput),
-            div(
-                { class: "col-md-2 d-grid" },
-                button({ type: "submit", class: "btn btn-primary mt-md-4" }, "Criar"),
-            ),
-        ),
-        statusBox,
-    )
+            }),
+        )
+    return new Map(houses.filter(Boolean).map(house => [house.id, house.title]))
 }
 
-function getUsers(mainContent, _params = {}, query = {}) {
-    const { skip, limit } = normalizePagingQuery(query)
-
+function getUsers(mainContent) {
     runAsync(
         mainContent,
         async () => {
-            const data = await fetchJson(buildUrl("/users", { skip, limit }))
-            const users = Array.isArray(data?.users) ? data.users : []
+            const [housesData, bookingsData] =
+                await Promise.all([
+                    fetchJson(buildUrl("/houses/mine"), { auth: true }),
+                    fetchJson(buildUrl("/bookings/mine"), { auth: true }),
+                ])
+
+            const houses = normalizeListPayload(housesData, "houses").slice(0, USER_PREVIEW_LIMIT)
+            const bookings = normalizeListPayload(bookingsData, "bookings").slice(0, USER_PREVIEW_LIMIT)
+            const houseTitles = await fetchHouseTitles(bookings)
+
             replaceMain(
                 mainContent,
                 buildPage(
                     "Users",
-                    createUserForm(mainContent),
-                    createUserOptionsSection(),
-                    createPagingControls("users", { skip, limit, itemCount: users.length }),
-                    createLinkedOrEmpty(
-                        users,
-                        "Sem users.",
-                        user => `#users/${encodeURIComponent(user.id)}`,
-                        user => `${user.name} (${user.email})`,
+                    div(
+                        { class: "border rounded p-3 mb-3" },
+                        div({ class: "fw-semibold mb-2" }, `My Houses (máx ${USER_PREVIEW_LIMIT})`),
+                        createLinkedOrEmpty(
+                            houses,
+                            "Sem casas criadas.",
+                            house => `#houses/${encodeURIComponent(house.id)}`,
+                            house => `${house.title} (${house.pricePerNight}/noite)`,
+                        ),
                     ),
-                    createPagingControls("users", { skip, limit, itemCount: users.length }),
+                    div(
+                        { class: "border rounded p-3 mb-3" },
+                        div({ class: "fw-semibold mb-2" }, `My Bookings (máx ${USER_PREVIEW_LIMIT})`),
+                        createLinkedOrEmpty(
+                            bookings,
+                            "Sem bookings reservados.",
+                            booking => `#bookings/${encodeURIComponent(booking.id)}`,
+                            booking => `${houseTitles.get(booking.hid) || "House"} | ${booking.startDate} -> ${booking.endDate}`,
+                        ),
+                    ),
+                    div(
+                        { class: "d-flex flex-wrap gap-3" },
+                        a({ href: "#houses/mine" }, "Ver todas as houses"),
+                        a({ href: "#bookings/mine" }, "Ver todos os bookings"),
+                        a({ href: "#bookings/new" }, "Criar booking"),
+                    ),
                 ),
             )
         },
@@ -120,110 +98,163 @@ function getUserById(mainContent, params = {}) {
     runAsync(
         mainContent,
         async () => {
-            const uid = params.uid
-            const user = await fetchJson(buildUrl(`/users/${encodeURIComponent(uid)}`))
+            const user = await fetchJson(buildUrl(`/users/${encodeURIComponent(params.uid)}`))
 
-            const updateStatus = div()
-            const nameInput =
-                input({
-                    class: "form-control",
-                    type: "text",
-                    required: true,
-                    value: user.name || "",
-                })
-            const emailInput =
-                input({
-                    class: "form-control",
-                    type: "email",
-                    required: true,
-                    value: user.email || "",
-                })
+            replaceMain(
+                mainContent,
+                buildPage(
+                    "Contacto do utilizador",
+                    div(
+                        { class: "card border-0 shadow-sm" },
+                        div(
+                            { class: "row g-0" },
+                            div(
+                                { class: "col-md-4" },
+                                div(
+                                    {
+                                        class: "h-100 d-flex align-items-center justify-content-center bg-light border-end",
+                                        style: { minHeight: "240px" },
+                                    },
+                                    div(
+                                        {
+                                            class: "rounded-circle border bg-white d-flex align-items-center justify-content-center text-muted fw-semibold",
+                                            style: { width: "150px", height: "150px", textAlign: "center", padding: "12px" },
+                                        },
+                                        "Utilizador desconhecido",
+                                    ),
+                                ),
+                            ),
+                            div(
+                                { class: "col-md-8" },
+                                div(
+                                    { class: "card-body d-flex flex-column justify-content-center h-100" },
+                                    div({ class: "h4 mb-3" }, user.name || "Sem nome"),
+                                    p({ class: "mb-0 text-muted" }, `Contacto: ${user.email || "Sem email"}`),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        },
+        "A carregar contacto do utilizador...",
+    )
+}
 
-            const updateForm =
+function getMyAccount(mainContent) {
+    runAsync(
+        mainContent,
+        async () => {
+            const session = readSession()
+            if (!session?.id || !session?.token) {
+                replaceMain(mainContent, buildPage("Minha conta", createAlert("Sessão indisponível.", "warning")))
+                return
+            }
+
+            const user = await fetchJson(buildUrl(`/users/${encodeURIComponent(session.id)}`))
+            const statusBox = div()
+            const updateGuard = createSubmitGuard()
+            const nameInput = input({ class: "form-control", type: "text", required: true, value: user.name || "" })
+            const emailInput = input({ class: "form-control", type: "email", required: true, value: user.email || "" })
+
+            const editForm =
                 form(
                     {
-                        class: "border rounded p-3 mb-3",
+                        class: "border rounded p-3 mt-3",
                         onsubmit: async event => {
                             event.preventDefault()
-                            clearFieldsValidation([nameInput, emailInput])
-                            const name = nameInput.value.trim()
-                            const email = emailInput.value.trim()
-
-                            const nameOk = validateRequired(nameInput, "name")
+                            const nameOk = validateRequired(nameInput, "nome")
                             const emailOk = validateEmail(emailInput, "email")
                             if (!nameOk || !emailOk) {
-                                updateStatus.replaceChildren(createAlert("Revê os campos assinalados.", "warning"))
+                                statusBox.replaceChildren(createAlert("Revê os campos assinalados.", "warning"))
+                                return
+                            }
+                            const payload = {
+                                name: nameInput.value.trim(),
+                                email: emailInput.value.trim(),
+                            }
+                            const initialPayload = {
+                                name: user.name || "",
+                                email: user.email || "",
+                            }
+                            if (areComparableValuesEqual(payload, initialPayload)) {
+                                statusBox.replaceChildren(createAlert("Não existem alterações para guardar.", "secondary"))
+                                return
+                            }
+                            const guard = updateGuard.begin()
+                            if (!guard.ok) {
+                                statusBox.replaceChildren(createAlert(guard.message, "warning"))
                                 return
                             }
 
-                            updateStatus.replaceChildren(createAlert("A atualizar user...", "secondary"))
+                            statusBox.replaceChildren(createAlert("A guardar alterações...", "secondary"))
                             try {
-                                const updated =
-                                    await fetchJson(
-                                        buildUrl(`/users/${encodeURIComponent(uid)}`),
-                                        { method: "PUT", auth: true, body: { name, email } },
-                                    )
-                                updateStatus.replaceChildren(createAlert("User atualizado.", "success"))
-                                replaceMain(mainContent, buildPage(`User ${uid}`, createJsonPre(updated), updateForm, deleteSection))
+                                const updated = await fetchJson(
+                                    buildUrl(`/users/${encodeURIComponent(session.id)}`),
+                                    {
+                                        method: "PUT",
+                                        auth: true,
+                                        body: payload,
+                                    },
+                                )
+                                writeSession({ ...session, name: updated.name, email: updated.email })
+                                statusBox.replaceChildren(createAlert("Conta atualizada.", "success"))
                             } catch (error) {
-                                updateStatus.replaceChildren(createAlert(error?.message || "Erro ao atualizar user.", "danger"))
+                                statusBox.replaceChildren(createAlert(error?.message || "Erro ao atualizar conta.", "danger"))
+                            } finally {
+                                updateGuard.end()
                             }
                         },
                     },
-                    div({ class: "mb-2 fw-semibold" }, "Atualizar User"),
-                    div(
-                        { class: "row g-2" },
-                        div({ class: "col-md-5" }, label({ class: "form-label" }, "name"), nameInput),
-                        div({ class: "col-md-5" }, label({ class: "form-label" }, "email"), emailInput),
-                        div(
-                            { class: "col-md-2 d-grid" },
-                            button({ type: "submit", class: "btn btn-warning mt-md-4" }, "Atualizar"),
-                        ),
+                    div({ class: "fw-semibold mb-3" }, "Editar dados"),
+                    div({ class: "row g-2" },
+                        div({ class: "col-md-6" }, label({ class: "form-label" }, "Nome"), nameInput),
+                        div({ class: "col-md-6" }, label({ class: "form-label" }, "Email"), emailInput),
                     ),
-                    updateStatus,
-                )
-
-            const deleteStatus = div()
-            const deleteSection =
-                div(
-                    { class: "border rounded p-3" },
-                    div({ class: "mb-2 fw-semibold" }, "Remover User"),
-                    button(
-                        {
-                            type: "button",
-                            class: "btn btn-danger",
-                            onclick: async () => {
-                                if (!window.confirm("Tens a certeza que queres remover este user?")) return
-                                deleteStatus.replaceChildren(createAlert("A remover user...", "secondary"))
-                                try {
-                                    await fetchJson(
-                                        buildUrl(`/users/${encodeURIComponent(uid)}`),
-                                        { method: "DELETE", auth: true, body: { id: uid } },
-                                    )
-                                    window.location.hash = "#users"
-                                } catch (error) {
-                                    deleteStatus.replaceChildren(createAlert(error?.message || "Erro ao remover user.", "danger"))
-                                }
-                            },
-                        },
-                        "Remover",
-                    ),
-                    deleteStatus,
+                    div({ class: "mt-3 d-grid d-md-flex" }, button({ type: "submit", class: "btn btn-primary" }, "Guardar")),
+                    statusBox,
                 )
 
             replaceMain(
                 mainContent,
                 buildPage(
-                    `User ${uid}`,
-                    createUserOptionsSection(),
-                    createJsonPre(user),
-                    updateForm,
-                    deleteSection,
+                    "Minha conta",
+                    div(
+                        { class: "card border-0 shadow-sm" },
+                        div(
+                            { class: "row g-0" },
+                            div(
+                                { class: "col-md-4" },
+                                div(
+                                    {
+                                        class: "h-100 d-flex align-items-center justify-content-center bg-light border-end",
+                                        style: { minHeight: "240px" },
+                                    },
+                                    div(
+                                        {
+                                            class: "rounded-circle border bg-white d-flex align-items-center justify-content-center text-muted fw-semibold",
+                                            style: { width: "150px", height: "150px", textAlign: "center", padding: "12px" },
+                                        },
+                                        "Utilizador desconhecido",
+                                    ),
+                                ),
+                            ),
+                            div(
+                                { class: "col-md-8" },
+                                div(
+                                    { class: "card-body d-flex flex-column justify-content-center h-100" },
+                                    div({ class: "h4 mb-3" }, user.name || "Sem nome"),
+                                    p({ class: "mb-0 text-muted" }, `Contacto: ${user.email || "Sem email"}`),
+                                ),
+                            ),
+                        ),
+                    ),
+                    editForm,
                 ),
             )
         },
-        "A carregar user...",
+        "A carregar conta...",
     )
 }
 
-export { getUserById, getUsers }
+export { getMyAccount, getUserById, getUsers }

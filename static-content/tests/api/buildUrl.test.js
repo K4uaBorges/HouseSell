@@ -22,24 +22,35 @@ test("buildUrl accepts path without leading slash", async () => {
     teardownDom()
 })
 
-test("buildUrl supports absolute apiBase from querystring", async () => {
+test("buildUrl ignores apiBase querystring and keeps current server base", async () => {
     setupDom({ url: "https://www.housesell.com/?apiBase=http://localhost:18080/api" })
     const { buildUrl } = await importFresh("../../api/buildUrl.js")
 
     const url = buildUrl("/users", { skip: 0, limit: 20 })
-    assert.equal(url, "http://localhost:18080/api/users?skip=0&limit=20")
-    assert.equal(localStorage.getItem("houses.api.base"), "http://localhost:18080/api")
+    assert.equal(url, "/api/users?skip=0&limit=20")
+    assert.equal(localStorage.getItem("houses.api.base"), null)
 
     teardownDom()
 })
 
-test("buildUrl reuses apiBase persisted in localStorage", async () => {
+test("buildUrl ignores apiBase persisted in localStorage", async () => {
     setupDom({ url: "https://www.housesell.com/" })
     localStorage.setItem("houses.api.base", "http://localhost:18080/api")
     const { buildUrl } = await importFresh("../../api/buildUrl.js")
 
     const url = buildUrl("/users")
-    assert.equal(url, "http://localhost:18080/api/users")
+    assert.equal(url, "/api/users")
+
+    teardownDom()
+})
+
+test("buildUrl uses global api base when provided", async () => {
+    setupDom({ url: "http://localhost:8080/" })
+    window.__HOUSES_API_BASE__ = "http://localhost:8091/api"
+    const { buildUrl } = await importFresh("../../api/buildUrl.js")
+
+    const url = buildUrl("/users")
+    assert.equal(url, "http://localhost:8091/api/users")
 
     teardownDom()
 })

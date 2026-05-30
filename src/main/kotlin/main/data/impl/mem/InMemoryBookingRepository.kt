@@ -1,7 +1,7 @@
 package main.data.impl.mem
 
 import main.data.interfaces.BookingRepository
-import main.domain_model.booking.Booking
+import main.domain.booking.Booking
 import main.errors.NoBookingExist
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -21,8 +21,7 @@ object InMemoryBookingRepository : BookingRepository {
         return value
     }
 
-    override fun update(updated: Booking): Booking =
-        save(updated)
+    override fun update(updated: Booking): Booking = save(updated)
 
     override fun getById(key: Uuid): Booking = bookingsById[key] ?: throw NoBookingExist("Booking not found.")
 

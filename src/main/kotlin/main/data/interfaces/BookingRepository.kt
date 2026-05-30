@@ -1,7 +1,6 @@
 package main.data.interfaces
 
-import main.domain_model.booking.Booking
-import main.data.interfaces.Repository
+import main.domain.booking.Booking
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 

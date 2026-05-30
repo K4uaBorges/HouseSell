@@ -1,9 +1,25 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Houses Rentals</title>
-        <meta charset="utf-8">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
-        <script src="indexSPA.js" type="module"></script>
-    </head>
+<html lang="pt">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Booker</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="./styles.css">
+    <script>
+        (function configureLocalApiBase() {
+            const hostname = window.location.hostname
+            const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1"
+            const isSameApiServer = window.location.port === "8081"
+            const isFileProtocol = window.location.protocol === "file:"
+
+            if ((isLocalHost && !isSameApiServer) || isFileProtocol) {
+                window.__HOUSES_API_BASE__ = "http://localhost:8081/api"
+            }
+        }())
+    </script>
+</head>
+<body>
+    <script type="module" src="./index.js"></script>
+</body>
 </html>

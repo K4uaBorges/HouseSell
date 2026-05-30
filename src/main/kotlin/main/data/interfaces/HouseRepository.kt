@@ -1,7 +1,6 @@
 package main.data.interfaces
 
-import main.data.interfaces.Repository
-import main.domain_model.house.House
+import main.domain.house.House
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 

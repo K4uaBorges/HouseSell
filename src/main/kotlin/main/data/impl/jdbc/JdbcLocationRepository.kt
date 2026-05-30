@@ -1,14 +1,14 @@
 package main.data.impl.jdbc
 
 import main.data.interfaces.LocationRepository
-import main.domain_model.location.Location
-import main.domain_model.location.LocationName
-import main.domain_model.location.LocationType
+import main.domain.location.Location
+import main.domain.location.LocationName
+import main.domain.location.LocationType
 import main.errors.LocationsRepositoryDatabaseException
 import main.errors.NoLocationExist
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.util.*
+import java.util.UUID
 import javax.sql.DataSource
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid

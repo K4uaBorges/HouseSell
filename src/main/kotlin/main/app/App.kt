@@ -1,55 +1,35 @@
 package main.app
 
-import main.api.http_server.HousesDataMem
-import main.api.http_server.HousesRouter
-import main.api.http_server.HousesWebApi
-import java.net.URI
-
-private const val DEFAULT_HTTP_PORT = 8080
+import main.api.httpServer.HousesDataMem
+import main.app.config.getOptionalSetting
+import main.app.config.getRequiredSetting
+import main.app.config.loadDotEnv
+import main.api.httpServer.HousesRouter
+import main.api.httpServer.HousesWebApi
 
 fun main() {
-    val jdbcDatabaseUrl = System.getenv("JDBC_DATABASE_URL")
-    val port = resolveHttpPort(System.getenv("PORT"), jdbcDatabaseUrl)
+    val dotEnv = loadDotEnv()
+    val jdbcDatabaseUrl = getRequiredSetting("JDBC_DATABASE_URL", dotEnv)
+    val databaseUser =
+        getOptionalSetting("DATABASE_USER", dotEnv)
+            ?: getOptionalSetting("DATABASE_NAME", dotEnv)
+    val databasePass = getOptionalSetting("DATABASE_PASS", dotEnv)
+    val rawPort = getOptionalSetting("PORT", dotEnv)
 
-    val services = HousesDataMem.services(jdbcDatabaseUrl)
+    val port =
+        rawPort
+            ?.toIntOrNull()
+            ?: 8080
 
-    val server = HousesRouter(HousesWebApi(services), port)
-    server.start()
-    println("Houses server running on port $port")
+    val usingDatabase = jdbcDatabaseUrl.isNotBlank()
+    val services = HousesDataMem.services(jdbcDatabaseUrl, databaseUser, databasePass)
 
-}
-
-private fun resolveHttpPort(
-    portRaw: String?,
-    jdbcDatabaseUrl: String?,
-): Int {
-    val configuredPort = portRaw?.toIntOrNull() ?: DEFAULT_HTTP_PORT
-    val databasePort = extractJdbcPort(jdbcDatabaseUrl)
-
-    if (databasePort == null || databasePort != configuredPort) {
-        return configuredPort
+    if (usingDatabase) {
+        println("Starting with PostgreSQL persistence at $jdbcDatabaseUrl")
+    } else {
+        println("Starting with in-memory persistence. Define JDBC_DATABASE_URL to persist data in PostgreSQL.")
     }
 
-    if (configuredPort != DEFAULT_HTTP_PORT) {
-        System.err.println(
-            "Warning: PORT=$configuredPort conflicts with JDBC_DATABASE_URL port $databasePort. " +
-                "Falling back to PORT=$DEFAULT_HTTP_PORT.",
-        )
-        return DEFAULT_HTTP_PORT
-    }
-
-    System.err.println(
-        "Warning: PORT=$configuredPort matches JDBC_DATABASE_URL port $databasePort. " +
-            "Adjust environment variables to avoid port conflict.",
-    )
-    return configuredPort
-}
-
-private fun extractJdbcPort(jdbcDatabaseUrl: String?): Int? {
-    val raw = jdbcDatabaseUrl?.trim().orEmpty()
-    if (raw.isEmpty()) return null
-
-    val uriRaw = raw.removePrefix("jdbc:")
-    val parsed = runCatching { URI.create(uriRaw) }.getOrNull() ?: return null
-    return parsed.port.takeIf { it > 0 }
+    val server = HousesRouter(HousesWebApi(services), port).start()
+    println("Houses server running on port ${server.port()}")
 }

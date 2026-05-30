@@ -1,8 +1,8 @@
 const routes = []
 let notFoundRouteHandler = () => {
     const currentPath = extractPath(window.location.hash)
-    if (currentPath !== "home") {
-        window.location.hash = "home"
+    if (currentPath !== "dashboard") {
+        window.location.hash = "dashboard"
     }
 }
 
@@ -122,6 +122,9 @@ function hashChangeHandler(mainContent = document.getElementById("mainContent"))
     const query = parseQuery(hash)
 
     const route = resolveRoute(path)
+
+    console.log(`Navigating to path: "${path}" with query:`)
+
     if (!route) {
         notFoundRouteHandler(mainContent, {}, query)
         return

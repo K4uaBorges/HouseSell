@@ -2,7 +2,6 @@ package main.api.utils
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
-import kotlin.collections.get
 import kotlin.test.Test
 
 /**
@@ -12,7 +11,6 @@ import kotlin.test.Test
  * application (houses, users, bookings, locations).
  */
 class PagingIntegrationTest {
-
     // ==================== Houses API Scenarios ====================
 
     @Test
@@ -283,13 +281,14 @@ class PagingIntegrationTest {
     @Test
     fun `api scenario - pagination preserves item order`() {
         // Ensures that pagination doesn't reorder items
-        val orderedHouses = listOf(
-            "House A - First",
-            "House B - Second",
-            "House C - Third",
-            "House D - Fourth",
-            "House E - Fifth"
-        )
+        val orderedHouses =
+            listOf(
+                "House A - First",
+                "House B - Second",
+                "House C - Third",
+                "House D - Fourth",
+                "House E - Fifth",
+            )
 
         val page1 = orderedHouses.page(Paging.of("0", "2"))
         val page2 = orderedHouses.page(Paging.of("2", "2"))
@@ -305,9 +304,10 @@ class PagingIntegrationTest {
         // Edge case: limit=1
         val items = (1..5).map { "Item $it" }
 
-        val results = (0..4).map { skip ->
-            items.page(Paging.of("$skip", "1"))
-        }
+        val results =
+            (0..4).map { skip ->
+                items.page(Paging.of("$skip", "1"))
+            }
 
         assertEquals("Item 1", results[0][0])
         assertEquals("Item 2", results[1][0])

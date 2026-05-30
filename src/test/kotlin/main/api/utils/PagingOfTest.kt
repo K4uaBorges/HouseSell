@@ -76,41 +76,46 @@ class PagingOfTest {
 
     @Test
     fun `of with negative skip throws IllegalArgumentException`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            Paging.of("-1", "10")
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                Paging.of("-1", "10")
+            }
         assertEquals("skip must be >= 0", exception.message)
     }
 
     @Test
     fun `of with limit zero throws IllegalArgumentException`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            Paging.of("0", "0")
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                Paging.of("0", "0")
+            }
         assertEquals("limit must be >= 1", exception.message)
     }
 
     @Test
     fun `of with negative limit throws IllegalArgumentException`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            Paging.of("0", "-5")
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                Paging.of("0", "-5")
+            }
         assertEquals("limit must be >= 1", exception.message)
     }
 
     @Test
     fun `of with limit exceeding max throws IllegalArgumentException`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            Paging.of("0", "101")
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                Paging.of("0", "101")
+            }
         assertEquals("limit must be <= 100", exception.message)
     }
 
     @Test
     fun `of with limit at max plus one throws`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            Paging.of("0", "101")
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                Paging.of("0", "101")
+            }
         assertTrue(exception.message!!.contains("100"))
     }
 }

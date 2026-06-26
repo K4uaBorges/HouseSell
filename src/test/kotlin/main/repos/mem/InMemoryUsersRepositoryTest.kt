@@ -5,8 +5,8 @@ import main.data.impl.mem.InMemoryUsersRepository
 import main.domain.user.Email
 import main.domain.user.Name
 import main.domain.user.User
-import main.utils.hashPassword
 import main.errors.NoUserExist
+import main.utils.hashPassword
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals

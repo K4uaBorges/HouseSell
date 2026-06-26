@@ -6,6 +6,7 @@ import main.data.impl.mem.InMemoryBookingRepository
 import main.data.impl.mem.InMemoryHouseRepository
 import main.data.impl.mem.InMemoryLocationRepository
 import main.data.impl.mem.InMemoryUsersRepository
+import main.utils.hashPassword
 import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Status
@@ -16,7 +17,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
-import main.utils.hashPassword
 
 @OptIn(ExperimentalUuidApi::class)
 class UsersApiTest {

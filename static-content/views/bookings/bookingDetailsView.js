@@ -84,12 +84,12 @@ function getBookingById(mainContent, params = {}) {
                         div({ class: "fw-semibold" }, currentHouse.title),
                         div({ class: "text-muted" }, `${booking.startDate} -> ${booking.endDate}`),
                         div({ class: "d-flex flex-wrap gap-3 mt-3" },
-                            a({ href: `#houses/${encodeURIComponent(currentHouse.id)}` }, "Ver house"),
+                            a({ href: `#houses/${encodeURIComponent(currentHouse.hid)}` }, "Ver house"),
                             a(
                                 {
                                     href:
                                         buildHash(
-                                            `houses/${encodeURIComponent(currentHouse.id)}/bookings`,
+                                            `houses/${encodeURIComponent(currentHouse.hid)}/bookings`,
                                             { dateStart: booking.startDate, dateEnd: booking.endDate },
                                         ),
                                 },

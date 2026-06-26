@@ -22,7 +22,7 @@ data class DeleteHouseRequest(
 
 @Serializable
 data class CreateHouseResponse(
-    val id: String,
+    val hid: String,
     val uid: String,
     val title: String,
     val lid: String,
@@ -36,7 +36,7 @@ data class CreateHouseResponse(
 
 @Serializable
 data class GetHouseResponse(
-    val id: String,
+    val hid: String,
     val uid: String,
     val title: String,
     val lid: String,
@@ -49,7 +49,7 @@ data class GetHouseResponse(
 
 @Serializable
 data class DeleteHouseResponse(
-    val id: String,
+    val hid: String,
     val deleted: Boolean,
 )
 

@@ -1,96 +1,336 @@
 # Relatório Técnico do Projeto
 
-## Developer
-### Kauã Borges
+### Developers
 
+Kauã Borges
 
-## 1) Visão geral
+Versão de entrega: `1.1.0`
 
-Este projeto implementa um backend em Kotlin para gestão de arrendamento de casas, com API HTTP, regras de domínio (users, locations, houses, bookings), persistência em memória e em PostgreSQL, e bateria de testes (unitários e integração).
+## 1. Resumo Executivo
 
-## 2) Estado atual do código (observação factual)
+O projeto implementa uma plataforma de arrendamento de casas composta por:
 
-- O código foi analisado na branch atual tal como está no repositório.
-- O comando `./gradlew compileKotlin` executa com sucesso.
-- Retornando:
+- backend HTTP em Kotlin sobre `http4k` e `Undertow`;
+- camada de domínio separada por módulos (`users`, `locations`, `houses`, `bookings`);
+- persistência com dupla implementação: repositórios em memória e repositórios JDBC para PostgreSQL;
+- SPA em JavaScript modular servida pelo mesmo processo HTTP;
+- testes automatizados em Kotlin e em JavaScript;
+- extensões atuais do projeto: autenticação por email e password, sessão bootstrap de demonstração, cache de casas com limite de tamanho, predição linear de preço, calendário mensal de disponibilidade e deploy Docker/Render.
 
-```bash
-Starting a Gradle Daemon, 1 incompatible and 3 stopped Daemons could not be reused, use --status for details
-BUILD SUCCESSFUL in 16s
-1 actionable task: 1 executed
-```
-Sobre o código `./gradlew compileKoltin` resolve dependências
-e valida configuração antes de compilar,
-mas não arranca o servidor nem corre testes (test é outra task).
+O servidor expõe:
 
+- API REST em `/api/*`;
+- SPA e conteúdo estático em `/`.
 
-## 3) Arquitetura e fluxo da API (prioritário)
+## 2. Funcionalidades Implementadas
 
-### 3.1 Fluxo principal
+Na versão final, a aplicação inclui as seguintes funcionalidades principais:
 
-1. `main.app.App.kt` inicia servidor HTTP e escolhe modo de dados (memória ou BD).
-2. `main.api.http_server.HousesRouter` arranca Undertow na porta configurada.
-3. `main.api.http_server.HousesWebApi` recebe pedidos, valida input HTTP (path/query/body), transforma para DTO e chama serviços.
-4. `main.api.http_server.HousesServices` faz orquestração de casos de uso, autenticação/autorização e mapeamento domínio <-> DTO.
-5. Serviços de domínio (`UsersService`, `HouseService`, `BookingService`, `LocationService`) aplicam regras de negócio.
-6. Repositórios (`mem` ou `jdbc`) persistem e consultam dados.
+- autenticação com email/password e sessão por token;
+- criação, consulta, atualização e remoção de utilizadores;
+- gestão hierárquica de localizações;
+- criação, consulta, atualização e remoção de anúncios de casas;
+- pesquisa de casas disponíveis por intervalo, localização e texto;
+- listagem de casas do utilizador autenticado;
+- criação, consulta, atualização e remoção de reservas;
+- listagem de reservas por casa, intervalo e utilizador autenticado;
+- calendário mensal de disponibilidade por casa;
+- previsão de preço por regressão linear;
+- estatísticas da cache de casas;
+- SPA com navegação por hash, formulários de gestão e persistência local da sessão;
+- imagem Docker publicada em Docker Hub e Web Service configurado no Render.
 
-![img.png](docs/img.png)
-#### Figura 1: Fluxo da API
-( O Server foi nomeado de Router )
+## 3. Arquitetura Global
 
-### 3.2 Camadas e responsabilidades
+![Arquitetura do projeto](docs/img.png)
 
-- **HTTP/API**: routing, parsing JSON, validação de parâmetros HTTP, codes de resposta, erro uniforme.
-- **Application services (`HousesServices`)**: coordenação entre serviços de domínio e API DTOs.
-- **Domain services**: validações de negócio e invariantes.
-- **Data layer**: armazenamento em memória e PostgreSQL.
+Figura 1 - Organização geral da aplicação entre servidor HTTP, camada Web API, serviços, domínio e persistência.
 
-### 3.3 Autenticação e autorização
+### 3.1 Fluxo principal de execução
 
-- Token esperado no header `Authorization: Bearer <uuid>`.
-- Parsing e validação em `main/api/utils/Auth.kt`.
-- Operações que exigem token:
-  - `POST /users`
-  - `PUT /users/{uid}`
-  - `DELETE /users/{uid}`
-  - `POST /locations`
-  - `PUT /locations/{lid}`
-  - `DELETE /locations/{lid}`
-  - `GET /houses/mine`
-  - `POST /houses`
-  - `PUT /houses/{hid}`
-  - `DELETE /houses/{hid}`
-  - `POST /bookings`
-  - `GET /bookings`
-  - `GET /bookings/{bid}`
-  - `PUT /bookings/{bid}`
-  - `DELETE /bookings/{bid}`
-  
-- Regras de Negócio:
-  - Só dono do anúncio pode alterar/apagar casa.
-  - Só dono da casa ou utilizador que reservou pode aceder/alterar/apagar booking.
-  - `GET /bookings` exige que o token seja dono da casa pedida.
-  - `POST /users` exige token válido de um utilizador já existente.
+1. `main.app.AppKt` lê configuração de ambiente e `.env`.
+2. `HousesDataMem.services(...)` decide a infraestrutura de dados.
+3. `DatabaseSchemaInitializer.ensureSchema(...)` prepara o schema quando há PostgreSQL.
+4. `HousesWebApi` define as rotas HTTP e a serialização JSON.
+5. `HousesRouter` publica `/api` e monta a SPA na raiz.
+6. A SPA faz chamadas `fetch` para a API e renderiza vistas dinamicamente.
 
-### 3.4 Paginação
+### 3.2 Camadas
 
-- Implementada em `main/api/utils/Paging.kt`.
-- Query params: `skip` e `limit`.
-- Defaults: `skip=0`, `limit=20`.
-- Limites: `skip >= 0`, `1 <= limit <= 100`.
-- Aplicada aos endpoints listáveis que chamam `.page(...)`.
+#### Entry point e configuração
 
-### 3.5 Tratamento de erros HTTP
+- `src/main/kotlin/main/app/App.kt`
+  - inicia a aplicação;
+  - resolve `PORT`, `JDBC_DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASS`;
+  - arranca `HousesRouter`.
+- `src/main/kotlin/main/app/config/EnvLoader.kt`
+  - lê `.env` a partir da raiz do projeto;
+  - permite fallback entre variáveis do processo e ficheiro `.env`;
+  - constrói `PGSimpleDataSource`.
 
-Em `HousesWebApi.safe(...)`:
+#### API HTTP
 
-- `UnauthorizedException` -> `401 Unauthorized`
-- `NoUserExist`, `NoHouseExist`, `NoLocationExist`, `NoBookingExist` -> `404 Not Found`
-- `SerializationException`, `DomainErrorException`, `IllegalArgumentException` -> `400 Bad Request`
-- `ServerErrorException` e restantes exceções -> `500 Internal Server Error`
+- `src/main/kotlin/main/api/httpServer/HousesRouter.kt`
+  - expõe `/api` para backend;
+  - expõe `/` para SPA;
+  - aplica CORS permissivo para `content-type` e `authorization`;
+  - resolve a diretoria `static-content` dinamicamente.
+- `src/main/kotlin/main/api/httpServer/HousesWebApi.kt`
+  - declara todas as rotas;
+  - faz parsing de `path`, `query`, `Authorization` e corpo JSON;
+  - converte exceções em respostas HTTP uniformes.
+- `src/main/kotlin/main/api/httpServer/HousesServices.kt`
+  - orquestra casos de uso;
+  - valida permissões;
+  - converte DTOs para chamadas de domínio;
+  - concentra funcionalidades adicionais como bootstrap demo, cache stats e predição.
 
-Formato de erro:
+#### Domínio
+
+- `UsersService`
+  - criação, listagem, atualização, remoção;
+  - unicidade de email;
+  - validação de password e armazenamento por hash SHA-512;
+  - autenticação por email/password;
+  - obtenção por email, id ou token.
+- `LocationService`
+  - gestão hierárquica;
+  - validação de tipos pai-filho;
+  - prevenção de ciclos;
+  - recuperação de `path`, filhos diretos e todos os descendentes.
+- `HouseService`
+  - validação de área, preço e descrição;
+  - CRUD de anúncios;
+  - cache de acesso a casas por `id`.
+- `BookingService`
+  - criação, atualização, remoção e consulta;
+  - validação de datas;
+  - prevenção de overlaps;
+  - cálculo de disponibilidade por intervalo e por mês.
+- `main.domain.prediction.LinearPreviewHouses.kt`
+  - treino de modelo linear;
+  - seleção da fonte de treino;
+  - previsão de preço por área.
+
+#### Persistência
+
+- Implementações em memória:
+  - `InMemoryUsersRepository`
+  - `InMemoryLocationRepository`
+  - `InMemoryHouseRepository`
+  - `InMemoryBookingRepository`
+- Implementações JDBC:
+  - `JdbcUsersRepository`
+  - `JdbcLocationRepository`
+  - `JdbcHouseRepository`
+  - `JdbcBookingRepository`
+
+## 4. Modo de Execução e Wiring
+
+### 4.1 Seleção de backend de dados
+
+`HousesDataMem.services(jdbcDatabaseUrl, ...)` usa sempre JDBC quando `JDBC_DATABASE_URL` está preenchido. Se a string vier vazia, a aplicação pode continuar com repositórios em memória através do objeto `HousesDataMem.services`.
+
+### 4.2 Inicialização da base de dados
+
+Quando o backend JDBC é usado:
+
+- cria-se um `PGSimpleDataSource`;
+- corre-se `DatabaseSchemaInitializer.ensureSchema(dataSource)`;
+- os repositórios JDBC passam a ser a fonte de verdade.
+
+### 4.3 Cache de casas
+
+Existe um cache explícito em `main.data.impl.caches.HouseInfoCache`:
+
+- chave: `Uuid` da casa;
+- valor: entidade `House`;
+- estratégia: fila baseada em `ArrayDeque` com refresh no acesso;
+- remoção do elemento mais antigo quando o limite é atingido;
+- métricas: `hits`, `misses`, `size`, `limit`.
+
+O limite é controlado por:
+
+- `HOUSE_CACHE_SIZE`, quando definido e maior que zero;
+- `100`, por omissão.
+
+## 5. API HTTP Atual
+
+Base URL lógica:
+
+- `http://localhost:8080/api`
+
+### 5.1 Sessão
+
+#### `GET /api/session/bootstrap`
+
+Cria ou reutiliza um cenário de demonstração:
+
+- utilizador demo;
+- localização `COUNTRY`;
+- uma casa livre;
+- uma casa ocupada;
+- uma reserva ativa na casa ocupada para `[hoje, amanhã)`.
+
+Retorna:
+
+- token de autenticação;
+- `userId`;
+- `locationId`;
+- `freeHouseId`;
+- `busyHouseId`;
+- `role`.
+
+#### `POST /api/session/login`
+
+Autenticação por credenciais:
+
+- recebe `{ "email": "...", "password": "..." }`;
+- procura o utilizador pelo email;
+- valida a password recebida contra o hash guardado;
+- devolve a sessão completa com token.
+
+### 5.2 Users
+
+Endpoints ativos:
+
+- `POST /api/users`
+- `GET /api/users`
+- `GET /api/users/{uid}`
+- `PUT /api/users/{uid}`
+- `DELETE /api/users/{uid}`
+
+Notas técnicas relevantes:
+
+- `POST /api/users` é público no código atual;
+- `POST /api/users` recebe `name`, `email` e `password`;
+- a password nunca é devolvida em respostas HTTP;
+- a persistência guarda apenas `password_hash`;
+- passwords fracas são rejeitadas por validação de domínio;
+- `PUT` e `DELETE` apenas exigem token válido, mas não verificam que o token pertence ao `uid` da rota;
+- `role` existe na entidade e nas respostas, mas o fluxo público atual cria utilizadores apenas com `USER`.
+
+### 5.3 Locations
+
+Endpoints ativos:
+
+- `POST /api/locations`
+- `GET /api/locations`
+- `GET /api/locations/getCountries`
+- `GET /api/locations/{lid}`
+- `PUT /api/locations/{lid}`
+- `DELETE /api/locations/{lid}`
+- `GET /api/locations/{lid}/childrenAll`
+- `GET /api/locations/{lid}/childrenDirect`
+- `GET /api/locations/{lid}/path`
+
+Regras implementadas:
+
+- `COUNTRY` não pode ter `parentId`;
+- tipos não-`COUNTRY` exigem pai existente;
+- a hierarquia é validada por `LocationType.isAllowedChild(...)`;
+- atualização não pode criar ciclos;
+- não é permitido apagar localizações com descendentes;
+- nomes de localização são tratados como únicos de forma case-insensitive no serviço.
+
+### 5.4 Houses
+
+Endpoints ativos:
+
+- `GET /api/houses`
+- `GET /api/houses/mine`
+- `POST /api/houses`
+- `GET /api/houses/available`
+- `GET /api/houses/preview`
+- `GET /api/houses/cache/stats`
+- `GET /api/houses/{hid}`
+- `PUT /api/houses/{hid}`
+- `DELETE /api/houses/{hid}`
+- `GET /api/houses/{hid}/available-days`
+
+Comportamentos relevantes:
+
+- `GET /api/houses` não devolve todas as casas; devolve apenas as disponíveis no intervalo `[hoje, amanhã]`;
+- `GET /api/houses/available` suporta filtros opcionais como `locationId` e `search`;
+- quando o pedido inclui token, as listagens de disponibilidade podem excluir casas do próprio utilizador;
+- `POST /api/houses` exige autenticação e obriga a que `lid` seja do tipo `LOCALITY`;
+- `PUT /api/houses/{hid}` e `DELETE /api/houses/{hid}` exigem que o token pertença ao dono da casa;
+- `DELETE /api/houses/{hid}` falha se existirem bookings associados;
+- `GET /api/houses/preview?areaSqMt=N` usa regressão linear treinada dinamicamente;
+- `GET /api/houses/cache/stats` expõe telemetria do cache;
+- `GET /api/houses/{hid}/available-days?year=YYYY&month=MM` devolve os dias livres do mês.
+
+### 5.5 Bookings
+
+Endpoints ativos:
+
+- `POST /api/bookings`
+- `GET /api/bookings`
+- `GET /api/bookings/mine`
+- `GET /api/bookings/{bid}`
+- `PUT /api/bookings/{bid}`
+- `DELETE /api/bookings/{bid}`
+
+Regras implementadas:
+
+- `startDate` e `endDate` usam formato ISO `YYYY-MM-DD`;
+- `endDate` tem de ser estritamente posterior a `startDate`;
+- não pode existir overlap para a mesma casa;
+- `GET /api/bookings` exige `hid`, `dateStart` e `dateEnd`;
+- `GET /api/bookings` apenas pode ser executado pelo dono da casa;
+- `GET /api/bookings/{bid}` pode ser usado pelo booker ou pelo dono da casa;
+- `PUT` e `DELETE` de booking só podem ser executados pelo utilizador que fez a reserva.
+
+## 6. Paginação
+
+Implementada em `src/main/kotlin/main/api/utils/Paging.kt`.
+
+Parâmetros:
+
+- `skip` com default `0`;
+- `limit` com default `20`;
+- `limit` máximo `100`.
+
+É usada em listagens como:
+
+- `GET /users`
+- `GET /locations`
+- `GET /houses`
+- `GET /houses/mine`
+- `GET /houses/available`
+- `GET /bookings`
+- `GET /bookings/mine`
+
+## 7. Erros e Contrato HTTP
+
+### 7.1 Serialização
+
+`HousesWebApi` usa `kotlinx.serialization` com:
+
+- `Json { ignoreUnknownKeys = true }`
+
+Isto significa que campos extra no body JSON são ignorados, mas campos em falta ou tipos inválidos continuam a gerar erro.
+
+### 7.2 Mapeamento de erros
+
+O método `safe { ... }` de `HousesWebApi` converte exceções para:
+
+- `401 Unauthorized`
+  - `UnauthorizedException`
+- `404 Not Found`
+  - `NoUserExist`
+  - `NoHouseExist`
+  - `NoLocationExist`
+  - `NoBookingExist`
+- `400 Bad Request`
+  - `SerializationException`
+  - `DomainErrorException`
+  - `IllegalArgumentException`
+  - `LidNotLocatityException`
+- `500 Internal Server Error`
+  - restantes exceções
+
+Formato:
 
 ```json
 {
@@ -99,516 +339,388 @@ Formato de erro:
 }
 ```
 
-## 4) API HTTP detalhada
-
-Base path: `/`
+## 8. DTOs e Contratos
+
+### 8.1 Sessão e utilizador
+
+- `CreateUserRequest`
+- `LoginUserRequest`
+- `UpdateUserRequest`
+- `DeleteUserRequest`
+- `UserSessionResponse`
+- `BootstrapSessionResponse`
+- `GetUserResponse`
+- `ListUsersResponse`
+
+Contratos principais:
+
+- `CreateUserRequest(name, email, password)`
+- `LoginUserRequest(email, password)`
+- `UserSessionResponse(id, name, email, token, role)`
+
+### 8.2 Localização
+
+- `CreateLocationRequest`
+- `UpdateLocationRequest`
+- `DeleteLocationRequest`
+- `CreateLocationResponse`
+- `GetLocationResponse`
+- `ListLocationsResponse`
+- `LocationSummary`
+- `LocationPathEntry`
+
+### 8.3 Casa
+
+- `CreateHouseRequest`
+- `UpdateHouseRequest`
+- `DeleteHouseRequest`
+- `CreateHouseResponse`
+- `GetHouseResponse`
+- `ListHousesResponse`
+- `HousePricePreviewResponse`
+- `HouseCacheStatsResponse`
+
+### 8.4 Booking e disponibilidade
+
+- `CreateBookingRequest`
+- `UpdateBookingRequest`
+- `DeleteBookingRequest`
+- `CreateBookingResponse`
+- `GetBookingResponse`
+- `ListBookingsResponse`
+- `ListAvailableHousesResponse`
+- `ListAvailableHouseDaysResponse`
+
+## 9. Persistência e Modelo de Dados
+
+### 9.1 Entidades principais
+
+- `User`
+  - `id`
+  - `name`
+  - `email`
+  - `passwordHash` persistido internamente
+  - `token`
+  - `role`
+- `Location`
+  - `id`
+  - `name`
+  - `type`
+  - `parentId`
+- `House`
+  - `id`
+  - `uid` do dono
+  - `title`
+  - `lid` da localização
+  - `areaSqMt`
+  - `pricePerNight`
+  - `description`
+- `Booking`
+  - `id`
+  - `hid`
+  - `uid`
+  - `startDate`
+  - `endDate`
+
+### 9.2 SQL e schema
+
+Os scripts relevantes encontram-se em:
+
+- `src/main/resources/sql/createSchema.sql`
+- `src/main/resources/sql/insertLocation.sql`
+- `src/test/resources/sql/createSchema.sql`
+- `src/test/resources/sql/insert_locs_for_test.sql`
+
+O projeto usa PostgreSQL com tabelas para:
+
+- `users`
+- `locations`
+- `houses`
+- `booking`
+
+O script `createSchema.sql` usa `CREATE TABLE IF NOT EXISTS`; portanto cria a estrutura inicial, mas não substitui migrações quando uma tabela antiga já existe com colunas em falta. O script `insertLocation.sql` popula a hierarquia base de localizações e é idempotente para nomes já existentes.
+
+Os testes JDBC usam Testcontainers para validar o comportamento dos repositórios contra PostgreSQL real.
 
-Content-Type esperado para body JSON: `application/json`.
+## 10. Predição Linear de Preço
 
-### 4.1 Users
+O endpoint `GET /api/houses/preview` é suportado por `main.domain.prediction.LinearPreviewHouses.kt`.
 
-| Método | Endpoint       | Auth | Request                                                                       | Response                                      |
-|--------|----------------|------|-------------------------------------------------------------------------------|-----------------------------------------------|
-| POST   | `/users`       | Sim  | `CreateUserRequest{name,email}`                                               | `201 CreateUserResponse{id,name,email,token}` |
-| GET    | `/users`       | Não  | query opcional `skip`,`limit`                                                 | `200 ListUsersResponse{users[]}`              |
-| GET    | `/users/{uid}` | Não  | path `uid`                                                                    | `200 GetUserResponse{id,name,email}`          |
-| PUT    | `/users/{uid}` | Sim  | `UpdateUserRequest{name,email}`                                               | `200 GetUserResponse`                         |
-| DELETE | `/users/{uid}` | Sim  | body opcional `DeleteUserRequest{id}` (se existir, tem de coincidir com path) | `200 DeleteUserResponse{id,deleted}`          |
+### 10.1 Fonte dos dados de treino
 
-### 4.2 Locations
-
-| Método | Endpoint                          | Auth | Request                                                                           | Response                                                    |
-|--------|-----------------------------------|------|-----------------------------------------------------------------------------------|-------------------------------------------------------------|
-| POST   | `/locations`                      | Sim  | `CreateLocationRequest{name,type,parentId?}`                                      | `201 CreateLocationResponse{id,name,type,parentId}`         |
-| GET    | `/locations`                      | Não  | sem body                                                                          | `200 ListLocationsResponse{locations[]}`                    |
-| GET    | `/locations/{lid}`                | Não  | path `lid`                                                                        | `200 GetLocationResponse{id,name,type,parentId,fullPath[]}` |
-| PUT    | `/locations/{lid}`                | Sim  | `UpdateLocationRequest{name,type,parentId?}`                                      | `200 GetLocationResponse`                                   |
-| DELETE | `/locations/{lid}`                | Sim  | body opcional `DeleteLocationRequest{id}` (se existir, tem de coincidir com path) | `200 DeleteLocationResponse{id,deleted}`                    |
-| GET    | `/locations/{lid}/childrenAll`    | Não  | path `lid`                                                                        | `200 List<LocationSummary>`                                 |
-| GET    | `/locations/{lid}/childrenDirect` | Não  | path `lid`                                                                        | `200 List<LocationSummary>`                                 |
-| GET    | `/locations/{lid}/path`           | Não  | path `lid`                                                                        | `200 List<LocationPathEntry>`                               |
-
-Regras de hierarquia (serviço de domínio):
-
-- `COUNTRY` não pode ter parent.
-- Tipos filhos válidos por nível.
-- Não pode criar ciclo.
-- Não pode apagar localização com filhos.
-
-### 4.3 Houses
-
-| Método | Endpoint            | Auth | Request                                                                        | Response                                    |
-|--------|---------------------|------|--------------------------------------------------------------------------------|---------------------------------------------|
-| GET    | `/houses`           | Não  | query opcional `skip`,`limit`                                                  | `200 ListHousesResponse{houses[]}`          |
-| GET    | `/houses/mine`      | Sim  | header Bearer + query opcional `skip`,`limit`                                  | `200 ListHousesResponse{houses[]}`          |
-| POST   | `/houses`           | Sim  | `CreateHouseRequest{title,lid,areaSqMt,pricePerNight,description}`             | `201 CreateHouseResponse{...}`              |
-| GET    | `/houses/available` | Não  | query obrigatória `startDate`,`endDate`; opcional `skip`,`limit`               | `200 ListAvailableHousesResponse{houses[]}` |
-| GET    | `/houses/{hid}`     | Não  | path `hid`                                                                     | `200 GetHouseResponse{...}`                 |
-| PUT    | `/houses/{hid}`     | Sim  | `UpdateHouseRequest{...}`                                                      | `200 GetHouseResponse`                      |
-| DELETE | `/houses/{hid}`     | Sim  | body opcional `DeleteHouseRequest{id}` (se existir, tem de coincidir com path) | `200 DeleteHouseResponse{id,deleted}`       |
-
-Observação de comportamento atual:
-
-- `GET /houses` devolve casas disponíveis no intervalo `[hoje, amanhã)` (não lista "todas" as casas no estado atual do serviço).
-
-### 4.4 Bookings
-
-| Método | Endpoint          | Auth | Request                                                                          | Response                                |
-|--------|-------------------|------|----------------------------------------------------------------------------------|-----------------------------------------|
-| POST   | `/bookings`       | Sim  | `CreateBookingRequest{hid,startDate,endDate}`                                    | `201 CreateBookingResponse{...}`        |
-| GET    | `/bookings`       | Sim  | query obrigatória `hid`,`dateStart`,`dateEnd`; opcional `skip`,`limit`           | `200 ListBookingsResponse{bookings[]}`  |
-| GET    | `/bookings/{bid}` | Sim  | path `bid`                                                                       | `200 GetBookingResponse{...}`           |
-| PUT    | `/bookings/{bid}` | Sim  | `UpdateBookingRequest{hid,startDate,endDate}`                                    | `200 GetBookingResponse`                |
-| DELETE | `/bookings/{bid}` | Sim  | body opcional `DeleteBookingRequest{id}` (se existir, tem de coincidir com path) | `200 DeleteBookingResponse{id,deleted}` |
-| GET    | `/bookings/mine`  | Sim  | header Bearer                                                                    | `200 ListBookingsResponse{bookings[]}`  |
-
-Regras de booking:
-
-- Formato de data obrigatório `YYYY-MM-DD`.
-- `endDate` tem de ser maior que `startDate`.
-- Não pode haver overlap para a mesma casa.
-
-## 5) Contratos DTO (API)
-
-### 5.1 Request DTOs
-
-- `CreateUserRequest`, `UpdateUserRequest`, `DeleteUserRequest`
-- `CreateLocationRequest`, `UpdateLocationRequest`, `DeleteLocationRequest`
-- `CreateHouseRequest`, `UpdateHouseRequest`, `DeleteHouseRequest`
-- `CreateBookingRequest`, `UpdateBookingRequest`, `DeleteBookingRequest`
-
-### 5.2 Response DTOs
-
-- User: `CreateUserResponse`, `GetUserResponse`, `DeleteUserResponse`, `ListUsersResponse`
-- Location: `CreateLocationResponse`, `GetLocationResponse`, `DeleteLocationResponse`, `ListLocationsResponse`, `LocationSummary`, `LocationPathEntry`
-- House: `CreateHouseResponse`, `GetHouseResponse`, `DeleteHouseResponse`, `ListHousesResponse`
-- Booking: `CreateBookingResponse`, `GetBookingResponse`, `DeleteBookingResponse`, `ListBookingsResponse`, `ListAvailableHousesResponse`, `AvailableHouseResponse`
-- Erro: `ApiError`
-
-## 6) Estrutura de pastas e ficheiros
-
-### 6.1 Raiz do projeto
-
-| Pasta/Ficheiro                               | Função                                                                                        |
-|----------------------------------------------|-----------------------------------------------------------------------------------------------|
-| `build.gradle.kts`                           | Build Gradle, dependências (http4k, Kotlin serialization, PostgreSQL), tasks Docker e testes. |
-| `docker-compose.yml`                         | Container PostgreSQL local (`houses-db`, porta host `5433`).                                  |
-| `.env`                                       | Variáveis de BD (`JDBC_DATABASE_URL`, `DATABASE_USER`, `DATABASE_PASS`, etc.).                |
-| `gradlew`, `gradlew.bat`, `gradle/wrapper/*` | Wrapper Gradle para build/test/run.                                                           |
-| `Phase1.md`                                  | Requisitos funcionais e não funcionais da fase do projeto.                                    |
-| `README.md`                                  | Este relatório.                                                                               |
-| `src/main/`                                  | Código principal da aplicação.                                                                |
-| `src/test/`                                  | Testes unitários e de integração + SQL de suporte.                                            |
-
-### 6.2 `src/main/kotlin/main` (ficheiro a ficheiro)
-
-#### App/config
-
-| Ficheiro                       | Função                                                                                                 |
-|--------------------------------|--------------------------------------------------------------------------------------------------------|
-| `main/app/App.kt`              | Entry point; lê `PORT` e `JDBC_DATABASE_URL`, cria serviços e arranca servidor.                        |
-| `main/app/config/EnvLoader.kt` | Loader opcional de `.env`, helpers para settings e `PGSimpleDataSource` (usado no módulo de predição). |
-
-#### API HTTP
-
-| Ficheiro                                 | Função                                                                                                                                                   |
-|------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `main/api/http_server/housesRouter.kt`   | Encapsula arranque do servidor Undertow e serve os ficheiros estáticos do SPA via `singlePageApp(ResourceLoader.Directory("static-content/sparouter"))`. |
-| `main/api/http_server/housesWebApi.kt`   | Define todas as rotas, parsing request, serialização response e mapeamento de erros HTTP.                                                                |
-| `main/api/http_server/housesServices.kt` | Casos de uso da API; valida auth/autorização e chama serviços de domínio.                                                                                |
-| `main/api/http_server/housesDataMem.kt`  | Wiring de dependências; escolhe `InMemory` vs `JDBC` conforme `JDBC_DATABASE_URL`.                                                                       |
-| `main/api/utils/Auth.kt`                 | Parsing/validação de Bearer token UUID.                                                                                                                  |
-| `main/api/utils/Paging.kt`               | Modelo de paginação + extensão para paginar listas.                                                                                                      |
-| `main/api/errors/ApiErrors.kt`           | DTO de erro HTTP (`status`, `error`).                                                                                                                    |
-
-#### DTOs
-
-| Ficheiro                       | Função                                                           |
-|--------------------------------|------------------------------------------------------------------|
-| `main/api/dto/UserDtos.kt`     | Contratos de request/response para users.                        |
-| `main/api/dto/LocationDtos.kt` | Contratos de request/response para locations.                    |
-| `main/api/dto/HouseDtos.kt`    | Contratos de request/response para houses.                       |
-| `main/api/dto/BookingDtos.kt`  | Contratos de request/response para bookings e casas disponíveis. |
-
-#### Domínio
-
-| Ficheiro                                              | Função                                                                                    |
-|-------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| `main/domain_model/user/User.kt`                      | Entidade `User` e value objects `Name`, `Email`.                                          |
-| `main/domain_model/user/UsersService.kt`              | Regras de users (criação, unicidade email, update/delete, listagem).                      |
-| `main/domain_model/location/Location.kt`              | Entidade `Location`, `LocationType`, regras de tipo/hierarquia base.                      |
-| `main/domain_model/location/LocationService.kt`       | Regras de localização (hierarquia, ciclo, path, children, update/delete).                 |
-| `main/domain_model/house/House.kt`                    | Entidade `House` e value object `Title`.                                                  |
-| `main/domain_model/house/HouseService.kt`             | Regras de houses (validação área/preço/descrição, CRUD).                                  |
-| `main/domain_model/booking/Booking.kt`                | Entidade `Booking` e value object `Date`.                                                 |
-| `main/domain_model/booking/BookingService.kt`         | Regras de booking (datas, overlap, disponibilidade, CRUD).                                |
-| `main/domain_model/prediction/linearPreviewHouses.kt` | Módulo opcional de regressão linear para previsão de preço com dados de repo/BD/fallback. |
-
-#### Data layer
-
-| Ficheiro                                           | Função                                                              |
-|----------------------------------------------------|---------------------------------------------------------------------|
-| `main/data/interfaces/Repository.kt`               | Interface genérica de repositório.                                  |
-| `main/data/interfaces/UsersRepository.kt`          | Contrato de persistência de users.                                  |
-| `main/data/interfaces/HouseRepository.kt`          | Contrato de persistência de houses.                                 |
-| `main/data/interfaces/BookingRepository.kt`        | Contrato de persistência de bookings.                               |
-| `main/data/interfaces/LocationRepository.kt`       | Contrato de persistência de locations (com métodos hierárquicos).   |
-| `main/data/impl/mem/InMemoryUsersRepository.kt`    | Repositório em memória para users (índices por id/token/email).     |
-| `main/data/impl/mem/InMemoryHouseRepository.kt`    | Repositório em memória para houses.                                 |
-| `main/data/impl/mem/InMemoryBookingRepository.kt`  | Repositório em memória para bookings.                               |
-| `main/data/impl/mem/InMemoryLocationRepository.kt` | Repositório em memória para locations (children/path/exists).       |
-| `main/data/impl/jdbc/JdbcUsersRepository.kt`       | Persistência JDBC users (CRUD + getByToken/email).                  |
-| `main/data/impl/jdbc/JdbcHouseRepository.kt`       | Persistência JDBC houses.                                           |
-| `main/data/impl/jdbc/JdbcBookingRepository.kt`     | Persistência JDBC bookings.                                         |
-| `main/data/impl/jdbc/JdbcLocationRepository.kt`    | Persistência JDBC locations com queries recursivas (path/children). |
-
-#### Utilitários e erros
-
-| Ficheiro                           | Função                                                                        |
-|------------------------------------|-------------------------------------------------------------------------------|
-| `main/utils/BookingDateUtils.kt`   | Parse/format/overlap de datas de booking.                                     |
-| `main/errors/TTTErrorException.kt` | Hierarquia de exceções de domínio/servidor/repositório/autorização/not found. |
-
-### 6.3 Outras pastas de `src/main`
-
-| Pasta/Ficheiro                         | Função                                                                                    |
-|----------------------------------------|-------------------------------------------------------------------------------------------|
-| `src/main/kotlin/sql/createSchema.sql` | Script SQL de criação do schema PostgreSQL (users, locations, houses, booking e índices). |
-
-### 6.4 `src/test` (ficheiro a ficheiro)
-
-#### API HTTP
-
-| Ficheiro                                                      | Função                                                                                                                                                                                                                             |
-|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `src/test/kotlin/http_server/HousesWebApiTest.kt`             | Testes de endpoints HTTP (JSON inválido, CRUD users, etc.).                                                                                                                                                                        |
-| `src/test/kotlin/http_server/HousesServicesTest.kt`           | Testes da camada `HousesServices`.                                                                                                                                                                                                 |
-| `src/test/kotlin/http_server/HousesRouterTest.kt`             | Testa bind de porta e serving de requests.                                                                                                                                                                                         |
-| `src/test/kotlin/http_server/HousesDataMemTest.kt`            | Testa seleção de backend mem vs jdbc.                                                                                                                                                                                              |
-| `src/test/kotlin/http_server/StaticContentIntegrationTest.kt` | Testes de integração que verificam se o servidor serve corretamente os ficheiros estáticos do SPA (`index.html`, `index.js`, `dsl.js`, `router.js`, `handlers.js`) e se o catch-all devolve `index.html` para paths desconhecidos. |
-
-#### Domínio/API por módulo
-
-| Ficheiro                                                       | Função                                              |
-|----------------------------------------------------------------|-----------------------------------------------------|
-| `src/test/kotlin/domain_model/user/UsersApiTest.kt`            | Testes API de users (status codes, validações).     |
-| `src/test/kotlin/domain_model/user/UsersServiceTest.kt`        | Regras de negócio de users.                         |
-| `src/test/kotlin/domain_model/location/LocationApiTest.kt`     | Testes API de locations (hierarquia, path, delete). |
-| `src/test/kotlin/domain_model/location/LocationServiceTest.kt` | Regras de negócio de locations.                     |
-| `src/test/kotlin/domain_model/house/HouseApiTest.kt`           | Testes API de houses (auth, ownership, disponível). |
-| `src/test/kotlin/domain_model/house/HouseServiceTest.kt`       | Regras de house service.                            |
-| `src/test/kotlin/domain_model/booking/BookingApiTest.kt`       | Testes API de bookings (auth, overlap, queries).    |
-| `src/test/kotlin/domain_model/booking/BookingServiceTest.kt`   | Regras de booking service.                          |
-
-#### Repositórios em memória
-
-| Ficheiro                                                      | Função                                  |
-|---------------------------------------------------------------|-----------------------------------------|
-| `src/test/kotlin/repos/mem/InMemoryUsersRepositoryTest.kt`    | Índices e CRUD de users em memória.     |
-| `src/test/kotlin/repos/mem/InMemoryHouseRepositoryTest.kt`    | CRUD houses em memória.                 |
-| `src/test/kotlin/repos/mem/InMemoryBookingRepositoryTest.kt`  | CRUD bookings em memória.               |
-| `src/test/kotlin/repos/mem/InMemoryLocationRepositoryTest.kt` | Hierarquia e CRUD locations em memória. |
-
-#### Repositórios JDBC e integração
-
-| Ficheiro                                                      | Função                                                      |
-|---------------------------------------------------------------|-------------------------------------------------------------|
-| `src/test/kotlin/repos/jdbc/PostgresTestContainer.kt`         | Base de testes com Testcontainers PostgreSQL e init schema. |
-| `src/test/kotlin/repos/jdbc/JdbcUsersRepositoryTest.kt`       | CRUD + constraints users em JDBC.                           |
-| `src/test/kotlin/repos/jdbc/JdbcHouseRepositoryTest.kt`       | CRUD + foreign keys houses em JDBC.                         |
-| `src/test/kotlin/repos/jdbc/JdbcBookingRepositoryTest.kt`     | CRUD bookings JDBC.                                         |
-| `src/test/kotlin/repos/jdbc/JdbcLocationRepositoryTest.kt`    | Hierarquia/path/children locations JDBC.                    |
-| `src/test/kotlin/repos/jdbc/JdbcRepositoryIntegrationTest.kt` | Cenários integrados multi-entidade e cascatas.              |
-
-#### Predição linear
-
-| Ficheiro                                             | Função                                |
-|------------------------------------------------------|---------------------------------------|
-| `src/test/kotlin/linear_preview/PricePreviewTest.kt` | Testes do módulo de regressão linear. |
-
-#### Utilitários de paginação e pedidos manuais
-
-| Ficheiro                                                     | Função                                                |
-|--------------------------------------------------------------|-------------------------------------------------------|
-| `src/test/kotlin/main/ls/api/utils/PagingOfTest.kt`          | Testes de parse/validação de `Paging.of`.             |
-| `src/test/kotlin/main/ls/api/utils/PagingPageTest.kt`        | Testes da extensão `List<T>.page`.                    |
-| `src/test/kotlin/main/ls/api/utils/PagingIntegrationTest.kt` | Testes de integração de paginação em rotas/listagens. |
-| `src/test/kotlin/main/ls/test.http`                          | Coleção de requests HTTP para testes manuais.         |
-
-#### SQL de testes
-
-| Ficheiro                                          | Função                                                             |
-|---------------------------------------------------|--------------------------------------------------------------------|
-| `src/test/resources/sql/createSchema.sql`         | Schema de base para testes JDBC.                                   |
-| `src/test/resources/sql/insert_locs_for_test.sql` | Script de inserção de dados de localização para cenários de teste. |
-
-### 6.5 Ficheiros estáticos (`static-content/sparouter`)
-
-| Ficheiro      | Função                                                                                                                                             |
-|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| `index.html`  | Ponto de entrada do SPA. Carrega Bootstrap, define o header de navegação fixo, o input de token e o `#mainContent` onde as views são renderizadas. |
-| `index.js`    | Entrypoint JS. Regista todas as rotas no router, configura os controlos de autenticação e escuta `hashchange`.                                     |
-| `dsl.js`      | DSL para construção de elementos DOM de forma declarativa. Exporta `el` e helpers por tag (`div`, `h2`, `a`, `ul`, etc.).                          |
-| `router.js`   | Router baseado em hash. Faz matching de templates com parâmetros (`:hid`, `:lid`, etc.) e extração de query strings.                               |
-| `handlers.js` | Handlers de cada rota do SPA. Fazem fetch à API, constroem a UI via DSL e gerem paginação e autenticação.                                          |
-
-## 7) Como correr o projeto localmente
-
-### 7.1 Pré-requisitos
-
-- JDK compatível com Gradle/Kotlin do projeto.
-- Docker (se usar PostgreSQL em container).
-
-### 7.2 Arranque com PostgreSQL (intenção do projeto)
-
-1. Subir BD:
-
-```bash
-./gradlew allUp
-```
-
-ou
-
-```bash
-docker compose up -d
-```
-
-2. Exportar variáveis (ou garantir que o shell já as tem):
-
-```bash
-export JDBC_DATABASE_URL=jdbc:postgresql://localhost:5433/houses
-export DATABASE_USER=houses
-export DATABASE_PASS=houses
-```
-
-3. Arrancar aplicação:
-
-```bash
-./gradlew run
-```
-
-Nota: o `App.kt` lê variáveis do ambiente de processo; não faz load direto de `.env`.
-
-### 7.3 Arranque em memória
-
-- Se `JDBC_DATABASE_URL` não estiver definido, `HousesDataMem` usa repositórios `InMemory`.
-
-## 8) Como testar a API
-
-### 8.1 Testes automáticos
+O pipeline tenta carregar amostras por esta ordem:
+
+1. PostgreSQL, se `JDBC_DATABASE_URL` existir e a leitura funcionar;
+2. repositório em memória;
+3. `fallbackHouses`, embutido no código.
+
+### 10.2 Processo
+
+1. recolha de pares `(area, price)`;
+2. normalização min-max de área e preço;
+3. treino com gradiente descendente;
+4. previsão do preço para a área pedida;
+5. arredondamento para `Long`.
+
+### 10.3 Resposta devolvida
+
+- área consultada;
+- preço previsto;
+- fonte de treino usada;
+- número de amostras;
+- peso e bias do modelo.
+
+## 11. SPA Atual
+
+![Navegação principal da SPA](docs/navigation.png)
+
+Figura 2 - Navegação principal da interface Web entre listagens, detalhes de casas, utilizadores, localizações e reservas.
+
+### 11.1 Estrutura
+
+O frontend encontra-se em `static-content/`.
+
+Ficheiros relevantes:
+
+- `static-content/index.html`
+- `static-content/indexSPA.js`
+- `static-content/router/router.js`
+- `static-content/dsl/dsl.js`
+- `static-content/handlers/indexHandlers.js`
+- `static-content/views/**/*`
+- `static-content/token/tokenStorage.js`
+- `static-content/api/*`
+- `static-content/ui/pageComponents.js`
+
+### 11.2 Navegação
+
+O router é hash-based. Rotas principais registradas hoje:
+
+- `#home`
+- `#dashboard`
+- `#houses`
+- `#houses/available`
+- `#houses/avaliable` alias mantido por compatibilidade
+- `#houses/preview`
+- `#houses/cache`
+- `#houses/mine`
+- `#houses/:hid`
+- `#houses/:hid/bookings`
+- `#houses/:hid/available-days`
+- `#locations`
+- `#locations/:lid`
+- `#locations/:lid/childrenAll`
+- `#locations/:lid/childrenDirect`
+- `#locations/:lid/path`
+- `#users`
+- `#account`
+- `#users/:uid`
+- `#bookings/new`
+- `#bookings/mine`
+- `#bookings/:bid`
+
+### 11.3 Autenticação no cliente
+
+`tokenStorage.js` guarda:
+
+- token em `localStorage` (`houses.auth.token`);
+- sessão serializada em `houses.auth.session`.
+
+O cliente:
+
+- restaura sessão em reload;
+- mantém a sessão mesmo depois de fechar e reabrir o browser;
+- remove a sessão local no logout;
+- diferencia acesso `ADMIN` na UI através de `hasAdminAccess()`;
+- sincroniza automaticamente o token quando a API devolve payload com `token`.
+
+A escolha de `localStorage` é deliberada no projeto atual. O enunciado da fase 4 permite uma interpretação mais restrita, com validade apenas até fechar o separador/browser; aqui foi privilegiada a persistência da sessão para melhorar a experiência de uso. A decisão deve ser lida em conjunto com o botão de logout, que limpa explicitamente o estado local.
+
+### 11.4 Fluxo da landing/auth screen
+
+`indexSPA.js` implementa:
+
+- criação de conta sem autenticação prévia;
+- login por email e password;
+- preview público de casas disponíveis;
+- transição para shell autenticada após sessão válida.
+
+### 11.5 Views funcionais
+
+#### Houses
+
+- pesquisa de casas;
+- detalhe da casa;
+- casas disponíveis por intervalo;
+- casas do utilizador;
+- preview de preço;
+- observação de cache stats;
+- dias disponíveis por mês.
+
+#### Bookings
+
+- criação de booking;
+- bookings por casa;
+- bookings do utilizador;
+- detalhe/edição/remoção de booking.
+
+#### Locations
+
+- listagem;
+- criação;
+- detalhe;
+- update;
+- path;
+- filhos diretos e transitivos.
+
+#### Users
+
+- listagem;
+- detalhe;
+- vista de conta autenticada.
+
+## 12. Estrutura de Pastas
+
+### 12.1 Backend Kotlin
+
+- `src/main/kotlin/main/app`
+- `src/main/kotlin/main/api`
+- `src/main/kotlin/main/domain`
+- `src/main/kotlin/main/data`
+- `src/main/kotlin/main/errors`
+- `src/main/kotlin/main/utils`
+
+### 12.2 Frontend
+
+- `static-content/api`
+- `static-content/dsl`
+- `static-content/error`
+- `static-content/handlers`
+- `static-content/passport`
+- `static-content/router`
+- `static-content/token`
+- `static-content/ui`
+- `static-content/views`
+- `static-content/utis`
+
+### 12.3 Testes
+
+- `src/test/kotlin/main/api`
+- `src/test/kotlin/main/domain`
+- `src/test/kotlin/main/repos`
+- `src/test/resources/sql`
+- `static-content/tests`
+
+## 13. Testes Automatizados
+
+### 13.1 Backend
+
+Cobertura relevante existente:
+
+- API HTTP
+- serviços de domínio
+- paginação
+- repositórios em memória
+- repositórios JDBC
+- integração com PostgreSQL via Testcontainers
+- serving de static content
+- regressão linear
+
+Comando:
 
 ```bash
 ./gradlew test
 ```
 
-### 8.2 Teste manual rápido com `curl`
+### 13.2 Frontend
 
-Criar user:
+Existe suíte Node para a SPA.
 
-```bash
-curl -s -X POST http://localhost:8080/users \
-  -H 'Authorization: Bearer <TOKEN_EXISTENTE>' \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Alice","email":"alice@example.com"}'
-```
-
-Nota: no estado atual, `POST /users` requer token válido de um utilizador já existente.
-
-Criar house (com token Bearer):
+Comandos:
 
 ```bash
-curl -s -X POST http://localhost:8080/houses \
-  -H 'Authorization: Bearer <TOKEN>' \
-  -H 'Content-Type: application/json' \
-  -d '{"title":"Casa Azul","lid":"<LOCATION_UUID>","areaSqMt":120,"pricePerNight":95.0,"description":"Casa perto da praia"}'
+cd static-content
+npm test
 ```
 
-Listar casas disponíveis:
+O `package.json` usa:
+
+- `node --test --test-concurrency=1 tests`
+
+## 14. Execução Local
+
+### 14.1 Com PostgreSQL
+
+1. Subir a base de dados:
 
 ```bash
-curl -s "http://localhost:8080/houses/available?startDate=2026-06-10&endDate=2026-06-12"
+docker compose up -d
 ```
 
-## 9) Variáveis de ambiente relevantes
+ou
 
-| Variável            | Uso                                    | Default no código             | Obrigatória                           |
-|---------------------|----------------------------------------|-------------------------------|---------------------------------------|
-| `PORT`              | Porta HTTP do servidor                 | `8080`                        | Não                                   |
-| `JDBC_DATABASE_URL` | Define uso de backend JDBC e URL da BD | sem default                   | Não (se ausente, usa memória)         |
-| `DATABASE_USER`     | User BD para `createDataSource`        | fallback para `DATABASE_NAME` | Depende de uso de `createDataSource`  |
-| `DATABASE_NAME`     | Fallback de user em `createDataSource` | sem default                   | Só se `DATABASE_USER` ausente         |
-| `DATABASE_PASS`     | Password BD para `createDataSource`    | sem default                   | Sim quando `createDataSource` é usado |
-
-## 10) Single Page Application (SPA)
-
-### 10.1 Visão geral
-
-A Phase 2 introduz uma interface web sob a forma de Single Page Application. O servidor serve os ficheiros estáticos a partir da pasta `static-content/sparouter/` através do mecanismo `singlePageApp` do http4k, configurado em `HousesRouter.kt`:
-
-```kotlin
-private val spa = singlePageApp(ResourceLoader.Directory("static-content/sparouter"))
+```bash
+./gradlew allUp
 ```
 
-O `singlePageApp` funciona como catch-all: qualquer path que não corresponda a uma rota da API devolve o `index.html`. Isto é necessário para que o browser consiga fazer refresh em qualquer rota do SPA sem receber 404.
+2. Configurar ambiente ou `.env`
 
-A navegação é feita com **hash routing** — o servidor recebe sempre `GET /`, e o fragmento `#houses/123` é interpretado pelo router JavaScript no cliente, sem pedidos adicionais ao servidor por cada "página" visitada.
+3. Arrancar a aplicação:
 
-Fluxo de um pedido típico:
-
-1. Browser carrega `http://localhost:8080/` → servidor devolve `index.html`
-2. `index.js` regista as rotas e escuta `hashchange`
-3. Utilizador clica em "Houses" → hash muda para `#houses`
-4. Router resolve o handler `getHouses`, que faz `fetch("/houses")` à API
-5. Resposta JSON é transformada em DOM via DSL e renderizada no `#mainContent`
-
-### 10.2 DSL JavaScript (`dsl.js`)
-
-Para evitar o uso repetitivo de `document.createElement` e `appendChild`, foi implementada uma DSL declarativa que permite construir a UI de forma composável.
-
-Função base:
-
-```javascript
-export function el(tagName, props, ...children) { ... }
+```bash
+./gradlew run
 ```
 
-A partir desta, são exportados helpers para cada tag HTML usada:
+### 14.2 Em memória
 
-```javascript
-const tag = tagName => (props, ...children) => el(tagName, props, ...children)
+O código atual chama `getRequiredSetting("JDBC_DATABASE_URL", dotEnv)` no arranque. Na prática, isso significa que a variável ou a entrada no `.env` tem de existir, mesmo que a intenção seja usar memória. Para usar efetivamente o modo em memória sem falha no arranque, é necessário rever `App.kt` ou garantir uma configuração compatível com o fluxo atual.
 
-export const div = tag("div")
-export const h2  = tag("h2")
-export const a   = tag("a")
-// etc.
-```
+## 15. Variáveis de Ambiente
 
-Exemplo — construção de uma lista de links sem DSL vs com DSL:
+| Variável            | Uso                                                                   |
+|---------------------|-----------------------------------------------------------------------|
+| `PORT`              | Porta HTTP publicada por `HousesRouter`                               |
+| `JDBC_DATABASE_URL` | URL JDBC PostgreSQL; atualmente tratada como obrigatória por `App.kt` |
+| `DATABASE_USER`     | utilizador PostgreSQL                                                 |
+| `DATABASE_NAME`     | fallback usado onde `DATABASE_USER` não existe                        |
+| `DATABASE_PASS`     | password PostgreSQL                                                   |
+| `HOUSE_CACHE_SIZE`  | limite do cache de casas                                              |
 
-```javascript
-// Sem DSL
-const ul = document.createElement("ul")
-const li = document.createElement("li")
-const anchor = document.createElement("a")
-anchor.href = "#houses"
-anchor.textContent = "Ver Houses"
-li.appendChild(anchor)
-ul.appendChild(li)
+No Render, o essencial é `JDBC_DATABASE_URL`. As variáveis `DATABASE_USER`, `DATABASE_NAME` e `DATABASE_PASS` continuam úteis para execução local ou configurações separadas, mas a URL JDBC completa também pode transportar as credenciais.
 
-// Com DSL
-ul(li(a({ href: "#houses" }, "Ver Houses")))
-```
+## 16. Possíveis Melhoramentos
 
-A função `el` suporta:
-- **Props como objeto**: `class`, `href`, `type`, event handlers (`onClick` → `addEventListener`), `style`, `dataset`, `aria`
-- **Children**: strings, números, nós DOM, arrays aninhados, `null`/`false` (ignorados)
-- **Primeiro argumento não-objeto**: tratado como child, não como props
+- Melhorar o CSS e tornar a interface mais consistente e responsiva.
+- Adicionar fotografias às casas, principalmente na página de detalhe.
+- Criar uma secção de comentários ou avaliações nas páginas das casas.
+- Evoluir a página de perfil, permitindo alterar foto, dados pessoais como biografia, número de telemóvel, etc e definições da conta.
+- Validar emails através de um serviço externo, como Resend, usando um domínio próprio.
+- Enviar email de confirmação quando uma reserva é criada com sucesso.
+- Criar um canal de contacto para suporte técnico.
+- Integrar pagamentos das reservas através do Stripe.
 
-### 10.3 Router (`router.js`)
+Embora isto seja um projeto académico e estas ideias aumentem bastante o âmbito, são evoluções naturais caso a aplicação passasse de protótipo académico para produto mais completo.
 
-O router é baseado em hash. Regista pares `(template, handler)` e resolve o handler correto quando o hash muda.
+## 17. Artefactos de Documentação
 
-**Registo de rotas** (em `index.js`):
+- especificação OpenAPI existente, sincronizada com o estado atual: `docs/openAPI.yaml`
+- coleção manual de requests: `src/test/kotlin/main/test.http`
+- requests de demonstração: `demonstration.http`
 
-```javascript
-router.addRoute("houses/:hid",          handlers.getHouseById)
-router.addRoute("houses/:hid/bookings", handlers.getBookingsByHouse)
-router.addRoute("bookings/:bid",        handlers.getBookingById)
-```
+## 18. Conclusão
 
-**Matching**: os segmentos do template são comparados com os segmentos do path atual. Segmentos que começam com `:` são capturados como parâmetros:
+No estado atual, o projeto já não é apenas um CRUD simples. Ele combina:
 
-```
-Template:  houses/:hid/bookings
-Path:      houses/abc-123/bookings
-Params:    { hid: "abc-123" }
-```
+- API REST com validação e paginação;
+- regras de domínio não triviais;
+- persistência pluggable;
+- SPA funcional;
+- autenticação por token;
+- autenticação com password e hash persistido;
+- cenário bootstrap para demonstrações;
+- cache com métricas;
+- predição linear de preço;
+- deploy Docker/Render com PostgreSQL externo;
+- testes em duas stacks.
 
-**Query strings**: extraídas separadamente do hash e passadas ao handler como segundo argumento:
-```
-Hash:   #houses/abc-123/bookings?dateStart=2026-06-01&dateEnd=2026-06-10
-Path:   houses/abc-123/bookings
-Query:  { dateStart: "2026-06-01", dateEnd: "2026-06-10" }
-```
-
-Cada handler recebe sempre a assinatura `(mainContent, params, query)`, garantindo uma interface uniforme.
-
-### 10.4 Handlers e grafo de navegabilidade (`handlers.js`)
-
-Os handlers fazem os pedidos à API e renderizam o resultado no `#mainContent`. Todas as chamadas assíncronas passam por `runAsync`, que mostra um estado de loading e trata erros de forma uniforme:
-
-```javascript
-function runAsync(mainContent, task, loadingLabel) {
-    withLoading(mainContent, loadingLabel)
-    task().catch(error => withError(mainContent, error))
-}
-```
-
-**Grafo de navegabilidade implementado:**
-
-![Grafo de navegabilidade do SPA](docs/navigation.png)
-
-| Nó de origem   | Destinos disponíveis                                    | Handler          |
-|----------------|---------------------------------------------------------|------------------|
-| Home           | Houses, Locations, Users, My Bookings                   | `getHome`        |
-| Houses         | HouseDetails (por casa)                                 | `getHouses`      |
-| HouseDetails   | LocationDetails, UserDetails (owner), Bookings da house | `getHouseById`   |
-| BookingDetails | HouseDetails, UserDetails (booker)                      | `getBookingById` |
-| UserDetails    | My Bookings                                             | `getUserById`    |
-| Todas as views | Home (header fixo)                                      | —                |
-
-Exemplo de `getHouseById` que concretiza as arestas do grafo:
-
-```javascript
-const relatedLinks = [
-    { href: `#locations/${house.lid}`, text: `Localização: ${house.lid}` },
-    { href: `#users/${house.uid}`,     text: `Proprietário: ${house.uid}` },
-    { href: `#houses/${hid}/bookings`, text: "Ver Bookings desta House" },
-]
-```
-
-### 10.5 Autenticação no frontend
-
-O token Bearer é guardado em `localStorage` com a chave `houses.auth.token`. O utilizador introduz-o no campo no topo da página e clica "Guardar token".
-
-Os handlers que chamam endpoints autenticados passam `{ auth: true }` a `fetchJson`, que injeta o header automaticamente:
-
-```javascript
-async function fetchJson(url, { auth = false } = {}) {
-    if (auth) {
-        const token = readToken()
-        if (!token) throw createApiError(401, "Sem token configurado.")
-        headers.Authorization = `Bearer ${token}`
-    }
-    // ...
-}
-```
-
-Endpoints que requerem token no SPA: `GET /houses/mine`, `GET /bookings/mine`, `GET /bookings`, `GET /bookings/{bid}`.
-
-### 10.6 Paginação no frontend
-
-A função `createPaginationControls` gera os botões "← Anterior" / "Próximo →" para qualquer listagem, preservando os filtros activos via `extraQuery`:
-
-```javascript
-function createPaginationControls(baseHash, skip, limit, hasPrev, hasNext, extraQuery = {}) {
-    const buildUrl = (newSkip) => {
-        const q = new URLSearchParams({ ...extraQuery, skip: newSkip, limit })
-        return `${baseHash}?${q.toString()}`
-    }
-    // ...
-}
-```
-
-Em `getBookingsByHouse`, as datas são passadas como `extraQuery` para que os botões de navegação mantenham o filtro:
-
-```javascript
-createPaginationControls(
-    `#houses/${hid}/bookings`,
-    skip, limit,
-    skip > 0,
-    bookings.length === limit,
-    { dateStart, dateEnd },
-)
-```
-
-A heurística `items.length === limit` determina se existe página seguinte: se o backend devolveu exatamente `limit` items, assume-se que há mais.
+O ponto mais importante para manutenção futura é manter a documentação sincronizada com o comportamento real das rotas e com as divergências arquiteturais já identificadas, principalmente em autenticação/autorização, modo em memória, semântica exata das listagens e configuração de produção.

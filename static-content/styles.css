@@ -1,1 +1,582 @@
 /* Stylesheet entrypoint for the SPA shell. */
+
+:root {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-subtle: #f0f6ff;
+    --surface-accent: #ffffff;
+    --text: #1a1f2c;
+    --muted: #5f6b7a;
+    --line: #d9e2ec;
+    --line-strong: #b9c8d8;
+    --shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+    --shadow-soft: 0 4px 16px rgba(16, 24, 40, 0.06);
+    --brand: #003b95;
+    --brand-strong: #002b6d;
+    --brand-soft: #e7f0ff;
+    --success: #008234;
+    --warning: #febb02;
+    --radius-xl: 20px;
+    --radius-lg: 14px;
+    --radius-md: 10px;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+    scroll-behavior: smooth;
+}
+
+body.app-body {
+    position: relative;
+    min-height: 100vh;
+    margin: 0;
+    color: var(--text);
+    font-family: "Manrope", sans-serif;
+    background:
+        linear-gradient(180deg, #003b95 0, #003b95 220px, #f5f7fb 220px, #f5f7fb 100%);
+}
+
+body.app-body::before,
+body.app-body::after {
+    content: none;
+}
+
+body.app-body > * {
+    position: relative;
+    z-index: 1;
+}
+
+.app-shell,
+.auth-shell {
+    width: min(1180px, calc(100vw - 2rem));
+    margin: 0 auto;
+}
+
+.topbar,
+.auth-shell > .app-brand,
+.auth-shell > .topbar-subtitle {
+    animation: fade-up 0.6s ease both;
+}
+
+.topbar,
+.auth-shell {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.topbar {
+    padding: 0.4rem 0 0.8rem;
+}
+
+.auth-shell {
+    padding: 0.4rem 0 1rem;
+}
+
+.app-brand,
+.brand-link,
+.page-title {
+    font-family: "Manrope", sans-serif;
+    letter-spacing: -0.02em;
+}
+
+.brand-link,
+a {
+    color: var(--brand-strong);
+    text-decoration: none;
+    transition: color 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.brand-link:hover,
+a:hover {
+    color: #6f320d;
+}
+
+.app-brand {
+    font-size: clamp(2rem, 3vw, 2.6rem);
+    margin: 0;
+    font-weight: 800;
+}
+
+.topbar-subtitle,
+.text-muted {
+    color: var(--muted) !important;
+}
+
+.topbar .app-brand,
+.topbar .topbar-subtitle,
+.auth-shell > .app-brand,
+.auth-shell > .topbar-subtitle {
+    color: #fff !important;
+}
+
+.topbar .brand-link,
+.auth-shell .brand-link {
+    color: #fff;
+}
+
+.topbar .brand-link:hover,
+.auth-shell .brand-link:hover {
+    color: #dbe8ff;
+}
+
+.topbar .topbar-subtitle,
+.auth-shell > .topbar-subtitle {
+    color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.nav-grid,
+.auth-nav-grid {
+    margin-top: 0.9rem;
+}
+
+.nav-panel,
+.page-shell > .border.rounded,
+.auth-shell form.border.rounded,
+.preview-panel-wrap > div,
+.auth-panel-wrap > div,
+.house-card,
+.app-code-block,
+.app-form-section,
+.border.rounded.p-3,
+.border.rounded.p-3.mb-3,
+.border.rounded.p-3.mb-4,
+.border.rounded.p-3.mt-3,
+.border.rounded.p-3.h-100 {
+    border: 1px solid var(--line) !important;
+    border-radius: var(--radius-lg) !important;
+    background: var(--surface-accent);
+    color: var(--text);
+    box-shadow: var(--shadow-soft);
+}
+
+.nav-panel,
+.auth-shell form.border.rounded,
+.preview-panel-wrap > div,
+.auth-panel-wrap > div,
+.page-shell > .border.rounded,
+.border.rounded.p-3,
+.border.rounded.p-3.mb-3,
+.border.rounded.p-3.mb-4,
+.border.rounded.p-3.mt-3,
+.border.rounded.p-3.h-100 {
+    padding: 1.2rem !important;
+}
+
+.nav-panel {
+    background: #ffffff;
+    border-color: var(--line) !important;
+    box-shadow: var(--shadow-soft);
+}
+
+.nav-panel h2,
+.page-title {
+    color: var(--text);
+}
+
+.nav-panel h2,
+.nav-panel a {
+    color: var(--text);
+}
+
+.page-shell > .border.rounded,
+.auth-shell form.border.rounded,
+.preview-panel-wrap > div,
+.auth-panel-wrap > div,
+.house-card,
+.app-code-block,
+.app-form-section,
+.border.rounded.p-3,
+.border.rounded.p-3.mb-3,
+.border.rounded.p-3.mb-4,
+.border.rounded.p-3.mt-3,
+.border.rounded.p-3.h-100 {
+    color: var(--text);
+}
+
+.page-shell > .border.rounded h1,
+.page-shell > .border.rounded h2,
+.page-shell > .border.rounded h3,
+.page-shell > .border.rounded h4,
+.page-shell > .border.rounded h5,
+.page-shell > .border.rounded h6,
+.auth-shell form.border.rounded h1,
+.auth-shell form.border.rounded h2,
+.auth-shell form.border.rounded h3,
+.auth-shell form.border.rounded h4,
+.auth-shell form.border.rounded h5,
+.auth-shell form.border.rounded h6,
+.preview-panel-wrap > div h1,
+.preview-panel-wrap > div h2,
+.preview-panel-wrap > div h3,
+.preview-panel-wrap > div h4,
+.preview-panel-wrap > div h5,
+.preview-panel-wrap > div h6,
+.auth-panel-wrap > div h1,
+.auth-panel-wrap > div h2,
+.auth-panel-wrap > div h3,
+.auth-panel-wrap > div h4,
+.auth-panel-wrap > div h5,
+.auth-panel-wrap > div h6,
+.house-card h1,
+.house-card h2,
+.house-card h3,
+.house-card h4,
+.house-card h5,
+.house-card h6 {
+    color: var(--text);
+}
+
+.page-shell > .border.rounded p,
+.page-shell > .border.rounded span,
+.page-shell > .border.rounded li,
+.auth-shell form.border.rounded p,
+.auth-shell form.border.rounded span,
+.auth-shell form.border.rounded li,
+.preview-panel-wrap > div p,
+.preview-panel-wrap > div span,
+.preview-panel-wrap > div li,
+.auth-panel-wrap > div p,
+.auth-panel-wrap > div span,
+.auth-panel-wrap > div li,
+.house-card p,
+.house-card span,
+.house-card li {
+    color: var(--text);
+}
+
+.page-shell > .border.rounded .text-muted,
+.auth-shell form.border.rounded .text-muted,
+.preview-panel-wrap > div .text-muted,
+.auth-panel-wrap > div .text-muted,
+.house-card .text-muted {
+    color: var(--muted) !important;
+}
+
+.page-shell > .border.rounded a,
+.auth-shell form.border.rounded a,
+.preview-panel-wrap > div a,
+.auth-panel-wrap > div a,
+.house-card a,
+.list-group-item a {
+    color: var(--brand-strong);
+}
+
+.page-shell > .border.rounded a:hover,
+.auth-shell form.border.rounded a:hover,
+.preview-panel-wrap > div a:hover,
+.auth-panel-wrap > div a:hover,
+.house-card a:hover,
+.list-group-item a:hover {
+    color: var(--brand);
+}
+
+.nav-panel a {
+    position: relative;
+    font-weight: 700;
+}
+
+.nav-panel a::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -4px;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--brand), transparent);
+    transform: scaleX(0.35);
+    transform-origin: left;
+    opacity: 0;
+    transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.nav-panel a:hover::after {
+    opacity: 1;
+    transform: scaleX(1);
+}
+
+.main-stage,
+.auth-panel-wrap,
+.preview-panel-wrap {
+    animation: fade-up 0.65s ease both;
+}
+
+.main-stage {
+    margin-top: 1.2rem;
+}
+
+.page-shell {
+    display: grid;
+    gap: 1rem;
+}
+
+.page-title {
+    margin-bottom: 0.25rem !important;
+    font-size: clamp(1.5rem, 2.2vw, 2rem);
+    font-weight: 800;
+}
+
+.app-alert {
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    box-shadow: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.alert-secondary {
+    color: #31425f;
+    background: #eef5ff;
+    border-color: #d3e3ff;
+}
+
+.alert-success {
+    color: #16522d;
+    background: #ebf9f0;
+    border-color: #cdeed8;
+}
+
+.alert-danger,
+.alert-warning {
+    border-color: #f1d59a;
+}
+
+.alert-warning {
+    background: #fff8e7;
+}
+
+.list-group.app-list,
+.list-group {
+    gap: 0.8rem;
+    display: grid;
+    background: transparent;
+}
+
+.app-list-item,
+.list-group-item {
+    border: 1px solid var(--line) !important;
+    border-radius: var(--radius-md) !important;
+    background: var(--surface-strong) !important;
+    padding: 1rem 1.1rem !important;
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.app-list-item:hover,
+.list-group-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-strong) !important;
+    box-shadow: 0 16px 26px rgba(46, 31, 17, 0.08);
+}
+
+.btn {
+    border-radius: 8px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    padding: 0.72rem 1rem;
+    border-width: 1px;
+    transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(46, 31, 17, 0.12);
+}
+
+.btn-primary,
+.btn-success {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: #fff !important;
+}
+
+.btn-success {
+    border-color: var(--success);
+    background: var(--success);
+}
+
+.btn-warning {
+    color: #1a1f2c;
+    border-color: #d7a700;
+    background: var(--warning);
+}
+
+.btn-danger {
+    border-color: #c13515;
+    background: #c13515;
+    color: #fff !important;
+}
+
+.btn-outline-primary,
+.btn-outline-secondary,
+.btn-outline-success,
+.btn-outline-danger {
+    background: #fff;
+    border-color: #c3d4e6;
+}
+
+.btn-outline-primary {
+    color: var(--brand);
+    border-color: var(--brand);
+}
+
+.btn-outline-secondary {
+    color: var(--brand-strong);
+    border-color: var(--brand);
+    background: #fff;
+}
+
+.btn-outline-success,
+.btn-outline-danger {
+    color: #fff !important;
+    background: var(--brand);
+}
+
+a.btn-primary,
+a.btn-success,
+a.btn-danger,
+a.btn-outline-success,
+a.btn-outline-danger {
+    color: #fff !important;
+}
+
+a.btn-primary:hover,
+a.btn-success:hover,
+a.btn-danger:hover,
+a.btn-outline-success:hover,
+a.btn-outline-danger:hover {
+    color: #fff !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-secondary:hover,
+.btn-outline-success:hover,
+.btn-outline-danger:hover {
+    color: #fff;
+}
+
+.btn-outline-primary:hover {
+    background: #0057b8;
+    border-color: #0057b8;
+}
+
+.btn-outline-secondary:hover {
+    background: #eef5ff;
+    border-color: var(--brand);
+    color: var(--brand-strong);
+}
+
+.btn-outline-success:hover,
+.btn-outline-danger:hover {
+    background: var(--brand-strong);
+    border-color: var(--brand-strong);
+}
+
+.form-control,
+.form-select {
+    min-height: 46px;
+    border-radius: 8px;
+    border: 1px solid #b8c7d9;
+    background: #fff;
+    color: var(--text);
+    box-shadow: none;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #0071c2;
+    box-shadow: 0 0 0 3px rgba(0, 113, 194, 0.15);
+}
+
+.form-label {
+    font-size: 0.82rem;
+    font-weight: 800;
+    text\-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #4f5b6b;
+}
+
+.house-card {
+    overflow: hidden;
+    transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+.house-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(16, 24, 40, 0.1);
+}
+
+.house-card-media {
+    color: #ffffff !important;
+    background:
+        linear-gradient(135deg, #0057b8 0%, #0071c2 55%, #4fa7ff 100%) !important;
+    border-color: #d9e2ec !important;
+}
+
+.house-card-body .h5 {
+    font-family: "Manrope", sans-serif;
+    font-size: 1.35rem;
+    font-weight: 800;
+}
+
+.app-code-block,
+pre {
+    overflow: auto;
+    color: #2c3340;
+}
+
+.page-shell > .border.rounded:first-of-type,
+.app-form-section,
+.home-search-highlight {
+    border-top: 4px solid var(--warning) !important;
+}
+
+.app-form-section {
+    align-items: end;
+}
+
+@keyframes fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+    body.app-body {
+        padding: 0.75rem !important;
+    }
+
+    .app-shell,
+    .auth-shell {
+        width: 100%;
+    }
+
+    .topbar,
+    .auth-shell {
+        padding: 0.2rem 0 1rem;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .nav-panel .d-flex,
+    .topbar .d-flex,
+    .house-card .d-flex {
+        gap: 0.75rem !important;
+    }
+}

@@ -10,7 +10,7 @@ import {
 } from "../../utis/index.js"
 import { createHouseCardGrid, createOwnerMap } from "./houseCards.js"
 import { normalizeHousesPayload } from "./housePayload.js"
-import { shuffleHouses } from "./houseLists.js"
+import { shuffleHouses } from "../../indexSPA.js"
 
 function getHousesAvailable(mainContent, _params = {}, query = {}) {
     const startDate = query.startDate || todayIsoDate()

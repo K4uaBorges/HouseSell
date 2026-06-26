@@ -5,6 +5,8 @@ out/
 gradle/
 node_modules/
 .env
+docker-compose.yml
+Dockerfile
 
 # Gradle local caches/distributions
 gradle/caches/

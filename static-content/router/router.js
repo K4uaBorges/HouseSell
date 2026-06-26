@@ -123,8 +123,6 @@ function hashChangeHandler(mainContent = document.getElementById("mainContent"))
 
     const route = resolveRoute(path)
 
-    console.log(`Navigating to path: "${path}" with query:`)
-
     if (!route) {
         notFoundRouteHandler(mainContent, {}, query)
         return

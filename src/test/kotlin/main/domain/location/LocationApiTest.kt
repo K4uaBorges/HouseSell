@@ -26,7 +26,7 @@ import kotlin.uuid.Uuid
 
 @Serializable
 private data class LocationResponse(
-    val id: String,
+    val lid: String,
     val parentId: String? = null,
 )
 
@@ -62,7 +62,7 @@ class LocationApiTest {
     }
 
     @Test
-    fun `GET locations rejects non admin users`() {
+    fun `GET locations accepts non admin users`() {
         val regularUserToken =
             HousesDataMem.services.createUser(main.api.dto.CreateUserRequest("Alice", "alice@example.com", password)).token
 
@@ -72,8 +72,8 @@ class LocationApiTest {
                     .header("Authorization", "Bearer $regularUserToken"),
             )
 
-        assertEquals(Status.UNAUTHORIZED, response.status)
-        assertTrue(response.bodyString().contains("Admin role required"))
+        assertEquals(Status.OK, response.status)
+        assertTrue(response.bodyString().contains("\"locations\""))
     }
 
     @Test
@@ -303,7 +303,7 @@ class LocationApiTest {
         assertEquals(Status.NOT_FOUND, getResponse3.status)
     }
 
-    private fun extractId(jsonStr: String): String = json.decodeFromString<LocationResponse>(jsonStr).id
+    private fun extractId(jsonStr: String): String = json.decodeFromString<LocationResponse>(jsonStr).lid
 
     private fun seedAuthUserToken(): Uuid {
         val authUser =

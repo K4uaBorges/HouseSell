@@ -37,7 +37,6 @@ object HousesDataMem {
             locationService = LocationService(locationRepository),
         )
 
-
     fun services(
         jdbcDatabaseUrl: String,
         databaseUser: String? = null,

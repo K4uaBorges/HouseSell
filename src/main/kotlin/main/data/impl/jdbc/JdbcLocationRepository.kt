@@ -106,6 +106,26 @@ class JdbcLocationRepository(
         }
     }
 
+    override fun getCountries(): List<Location> =
+        withDatabaseHandling("getting countries") {
+            dataSource.connection.use { conn ->
+                conn
+                    .prepareStatement(
+                        """
+                    select from locations where loc_type = 'COUNTRY'
+                    """,
+                    ).use { stmt ->
+                        stmt.executeQuery().use { rs ->
+                            val result = mutableListOf<Location>()
+                            while (rs.next()) {
+                                result.plusAssign(mapLocation(rs))
+                            }
+                            result
+                        }
+                    }
+            }
+        }
+
     override fun getChildrenAll(parentId: Uuid): List<Location> =
         withDatabaseHandling("getting location children") {
             dataSource.connection.use { conn ->
@@ -141,22 +161,23 @@ class JdbcLocationRepository(
     override fun getChildrenDirect(parentId: Uuid): List<Location> =
         withDatabaseHandling("getting location children") {
             dataSource.connection.use { conn ->
-                conn.prepareStatement(
-                    """
-                    SELECT lid, name, loc_type, parent_lid
-                    FROM locations
-                    WHERE parent_lid = ?
-                    """.trimIndent(),
-                ).use { stmt ->
-                    stmt.setObject(1, toJavaUuid(parentId))
-                    stmt.executeQuery().use { rs ->
-                        val result = mutableListOf<Location>()
-                        while (rs.next()) {
-                            result.plusAssign(mapLocation(rs))
+                conn
+                    .prepareStatement(
+                        """
+                        SELECT lid, name, loc_type, parent_lid
+                        FROM locations
+                        WHERE parent_lid = ?
+                        """.trimIndent(),
+                    ).use { stmt ->
+                        stmt.setObject(1, toJavaUuid(parentId))
+                        stmt.executeQuery().use { rs ->
+                            val result = mutableListOf<Location>()
+                            while (rs.next()) {
+                                result.plusAssign(mapLocation(rs))
+                            }
+                            result
                         }
-                        result
                     }
-                }
             }
         }
 

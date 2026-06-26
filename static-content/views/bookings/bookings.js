@@ -84,12 +84,12 @@ function createBookingEditor({
                 }
 
                 const payload = {
-                    hid: fixedHouse.id,
+                    hid: fixedHouse.hid,
                     startDate: startDateInput.value.trim(),
                     endDate: endDateInput.value.trim(),
                 }
                 if (!skipUnchangedCheck && fixedHouse && areComparableValuesEqual(payload, {
-                    hid: fixedHouse.id,
+                    hid: fixedHouse.hid,
                     startDate: initialStartDate,
                     endDate: initialEndDate,
                 })) {
@@ -137,7 +137,7 @@ function createBookingsList(bookings, houseById = new Map()) {
                 { class: "list-group-item" },
                 div({ class: "fw-semibold" }, houseById.get(booking.hid)?.title || "House"),
                 div({ class: "text-muted mb-2" }, `${booking.startDate} -> ${booking.endDate}`),
-                a({ href: `#bookings/${encodeURIComponent(booking.id)}` }, "Ver detalhe"),
+                a({ href: `#bookings/${encodeURIComponent(booking.bid)}` }, "Ver detalhe"),
             ),
         ),
     )
@@ -171,7 +171,7 @@ function getBookingsByHouse(mainContent, params = {}, query = {}) {
                     submitClass: "btn btn-primary",
                     onSubmit: async payload => {
                         const created = await fetchJson(buildUrl("/bookings"), { method: "POST", auth: true, body: payload })
-                        window.location.hash = `#bookings/${encodeURIComponent(created.id)}`
+                        window.location.hash = `#bookings/${encodeURIComponent(created.bid)}`
                     },
                 })
 
@@ -198,7 +198,7 @@ function getMyBookings(mainContent) {
         .then(async data => {
             const bookings = normalizeBookingsPayload(data)
             const houses = await fetchHousesByIds(bookings.map(booking => booking.hid))
-            const houseById = new Map(houses.map(house => [house.id, house]))
+            const houseById = new Map(houses.map(house => [house.hid, house]))
 
             replaceMain(
                 mainContent,
@@ -289,10 +289,10 @@ function getBookingById(mainContent, params = {}) {
                         div({ class: "fw-semibold" }, currentHouse.title),
                         div({ class: "text-muted" }, `${booking.startDate} -> ${booking.endDate}`),
                         div({ class: "d-flex flex-wrap gap-3 mt-3" },
-                            a({ href: `#houses/${encodeURIComponent(currentHouse.id)}` }, "Ver house"),
+                            a({ href: `#houses/${encodeURIComponent(currentHouse.hid)}` }, "Ver house"),
                             a(
                                 {
-                                    href: `#houses/${encodeURIComponent(currentHouse.id)}/bookings/dateStart=${encodeURIComponent(booking.startDate)}&dateEnd=${encodeURIComponent(booking.endDate)}`,
+                                    href: `#houses/${encodeURIComponent(currentHouse.hid)}/bookings/dateStart=${encodeURIComponent(booking.startDate)}&dateEnd=${encodeURIComponent(booking.endDate)}`,
                                 },
                                 "Refazer reserva nesta house",
                             ),

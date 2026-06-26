@@ -10,7 +10,7 @@ function createBookingsList(bookings, houseById = new Map()) {
                 { class: "list-group-item" },
                 div({ class: "fw-semibold" }, houseById.get(booking.hid)?.title || "House"),
                 div({ class: "text-muted mb-2" }, `${booking.startDate} -> ${booking.endDate}`),
-                a({ href: `#bookings/${encodeURIComponent(booking.id)}` }, "Ver detalhe"),
+                a({ href: `#bookings/${encodeURIComponent(booking.bid)}` }, "Ver detalhe"),
             ),
         ),
     )

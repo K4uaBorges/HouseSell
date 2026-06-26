@@ -184,11 +184,12 @@ class BookingApiTest {
                     .header("Content-Type", "application/json")
                     .body(
                         """
-                            {
-                                "startDate":"2026-06-11",
-                                "endDate":"2026-06-13"
-                            }
-                        """.trimIndent()),
+                        {
+                            "startDate":"2026-06-11",
+                            "endDate":"2026-06-13"
+                        }
+                        """.trimIndent(),
+                    ),
             )
 
         assertEquals(Status.OK, response.status)
@@ -199,8 +200,8 @@ class BookingApiTest {
     @Test
     fun `PUT booking does not change house even if hid is sent`() {
         val ownerToken = createUserAndGetToken("owner-change-house@example.com")
-        val originalHouseId = createHouseAndGetId(ownerToken)
-        val otherHouseId = createHouseAndGetId(ownerToken)
+        val originalHouseId = createHouseAndGetId(ownerToken, "Casa Original")
+        val otherHouseId = createHouseAndGetId(ownerToken, "Casa Alternativa")
         val bookerToken = createUserAndGetToken("booker-change-house@example.com")
         val bookingId = createBookingAndGetId(bookerToken, originalHouseId)
 
@@ -211,12 +212,12 @@ class BookingApiTest {
                     .header("Content-Type", "application/json")
                     .body(
                         """
-                      {
-                          "hid":"$otherHouseId",
-                          "startDate":"2026-06-11",
-                          "endDate":"2026-06-13"
-                      }
-                      """.trimIndent(),
+                        {
+                            "hid":"$otherHouseId",
+                            "startDate":"2026-06-11",
+                            "endDate":"2026-06-13"
+                        }
+                        """.trimIndent(),
                     ),
             )
 
@@ -239,11 +240,11 @@ class BookingApiTest {
                     .header("Content-Type", "application/json")
                     .body(
                         """
-                      {
-                          "startDate":"2026-06-11",
-                          "endDate":"2026-06-13"
-                      }
-                      """.trimIndent(),
+                        {
+                            "startDate":"2026-06-11",
+                            "endDate":"2026-06-13"
+                        }
+                        """.trimIndent(),
                     ),
             )
 
@@ -314,11 +315,31 @@ class BookingApiTest {
 
     @Test
     fun `GET bookings mine returns only authenticated user bookings`() {
+        val ownerToken =
+            HousesDataMem.services.createUser(
+                CreateUserRequest(
+                    "Owner",
+                    "owner-bookings@example.com",
+                    password,
+                ),
+            ).token
+        val houseId = createHouseAndGetId(ownerToken)
         val userAToken =
-            HousesDataMem.services.createUser(CreateUserRequest("User A", "usera@example.com", password)).token
-        val houseId = createHouseAndGetId(userAToken)
+            HousesDataMem.services.createUser(
+                CreateUserRequest(
+                    "User A",
+                    "usera@example.com",
+                    password,
+                ),
+            ).token
         val userBToken =
-            HousesDataMem.services.createUser(CreateUserRequest("User B", "userb@example.com", password)).token
+            HousesDataMem.services.createUser(
+                CreateUserRequest(
+                    "User B",
+                    "userb@example.com",
+                    password,
+                ),
+            ).token
 
         val bookingAResponse =
             api.routes(
@@ -327,7 +348,7 @@ class BookingApiTest {
                     .header("Content-Type", "application/json")
                     .body("""{"hid":"$houseId","startDate":"2026-06-10","endDate":"2026-06-12"}"""),
             )
-        val bookingAId = extractField(bookingAResponse.bodyString(), "id")
+        val bookingAId = extractField(bookingAResponse.bodyString(), "bid")
 
         val bookingBResponse =
             api.routes(
@@ -336,7 +357,7 @@ class BookingApiTest {
                     .header("Content-Type", "application/json")
                     .body("""{"hid":"$houseId","startDate":"2026-06-13","endDate":"2026-06-15"}"""),
             )
-        val bookingBId = extractField(bookingBResponse.bodyString(), "id")
+        val bookingBId = extractField(bookingBResponse.bodyString(), "bid")
 
         val response =
             api.routes(
@@ -408,7 +429,10 @@ class BookingApiTest {
         return extractField(response.bodyString(), "token")
     }
 
-    private fun createHouseAndGetId(ownerToken: String): String {
+    private fun createHouseAndGetId(
+        ownerToken: String,
+        title: String = "Casa Azul",
+    ): String {
         val locationId = createLeafLocationAndGetId()
         val response =
             api.routes(
@@ -418,17 +442,17 @@ class BookingApiTest {
                     .body(
                         """
                         {
-                            "title":"Casa Azul",
+                            "title":"$title",
                             "lid":"$locationId",
                             "areaSqMt":120,
                             "pricePerNight":95.0,
-                            "description":"Casa para booking"
+                            "description":"Casa para booking $title"
                         }
                         """.trimIndent(),
                     ),
             )
 
-        return extractField(response.bodyString(), "id")
+        return extractField(response.bodyString(), "hid")
     }
 
     private fun createLeafLocationAndGetId(): String {
@@ -455,7 +479,7 @@ class BookingApiTest {
             )
 
         assertEquals(Status.CREATED, response.status, response.bodyString())
-        return extractField(response.bodyString(), "id")
+        return extractField(response.bodyString(), "lid")
     }
 
     private fun createBookingAndGetId(
@@ -470,7 +494,7 @@ class BookingApiTest {
                     .body("""{"hid":"$houseId","startDate":"2026-06-10","endDate":"2026-06-12"}"""),
             )
 
-        return extractField(response.bodyString(), "id")
+        return extractField(response.bodyString(), "bid")
     }
 
     private fun extractField(

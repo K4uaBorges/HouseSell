@@ -42,7 +42,7 @@ class StaticContentIntegrationTest {
 
         assertEquals(Status.OK, response.status)
         val body = response.bodyString()
-        assertTrue(body.contains("<title>Booking Houses / Rent House</title>"), "Deve conter o titulo")
+        assertTrue(body.contains("<title>Booker</title>"), "Deve conter o titulo")
         assertTrue(body.contains("<script type=\"module\" src=\"./index.js\""), "Deve referenciar o index.js")
         assertEquals(response.header("Content-Type")?.contains("text/html"), true)
     }
@@ -85,7 +85,7 @@ class StaticContentIntegrationTest {
         val response = client(Request(Method.GET, "$baseUrl/nonexistent-spa-path"))
 
         assertEquals(Status.OK, response.status)
-        assertTrue(response.bodyString().contains("<title>Booking Houses / Rent House</title>"))
+        assertTrue(response.bodyString().contains("<title>Booker</title>"))
     }
 
     @Test
@@ -103,7 +103,7 @@ class StaticContentIntegrationTest {
             val response = client(Request(Method.GET, "$isolatedBaseUrl/"))
 
             assertEquals(Status.OK, response.status)
-            assertTrue(response.bodyString().contains("<title>Booking Houses / Rent House</title>"))
+            assertTrue(response.bodyString().contains("<title>Booker</title>"))
         } finally {
             System.setProperty("user.dir", originalUserDir)
         }

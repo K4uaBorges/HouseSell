@@ -28,7 +28,7 @@ function getCreateBookingView(mainContent, _params = {}, query = {}) {
                     createDateSearchForm("bookings/new", startDate, endDate, "Pesquisar Houses", "dateStart", "dateEnd"),
                     createBookingEditor({
                         houseOptions: houses,
-                        selectedHouseId: houses[0]?.id || "",
+                        selectedHouseId: houses[0]?.hid || "",
                         initialStartDate: startDate,
                         initialEndDate: endDate,
                         titleText: "Nova Booking",
@@ -36,7 +36,7 @@ function getCreateBookingView(mainContent, _params = {}, query = {}) {
                         submitClass: "btn btn-primary",
                         onSubmit: async payload => {
                             const created = await fetchJson(buildUrl("/bookings"), { method: "POST", auth: true, body: payload })
-                            window.location.hash = `#bookings/${encodeURIComponent(created.id)}`
+                            window.location.hash = `#bookings/${encodeURIComponent(created.bid)}`
                         },
                     }),
                     houses.length

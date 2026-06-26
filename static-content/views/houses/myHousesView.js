@@ -28,7 +28,7 @@ function getMyHouses(mainContent) {
                     createLinkedOrEmpty(
                         houses,
                         "Sem casas criadas.",
-                        house => `#houses/${encodeURIComponent(house.id)}`,
+                        house => `#houses/${encodeURIComponent(house.hid)}`,
                         house => `${house.title} (${house.pricePerNight}/noite)`,
                     ),
                 ),

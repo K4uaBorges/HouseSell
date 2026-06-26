@@ -34,8 +34,8 @@ function createBookingEditor({
                 ...houseOptions.map(house =>
                     option(
                         {
-                            value: house.id,
-                            selected: house.id === selectedHouseId,
+                            value: house.hid,
+                            selected: house.hid === selectedHouseId,
                         },
                         `${house.title} (${house.pricePerNight}/noite)`,
                     ),
@@ -60,7 +60,7 @@ function createBookingEditor({
                 }
 
                 const payload = {
-                    hid: fixedHouse?.id || String(houseInput.value || "").trim(),
+                    hid: fixedHouse?.hid || String(houseInput.value || "").trim(),
                     startDate: startDateInput.value.trim(),
                     endDate: endDateInput.value.trim(),
                 }

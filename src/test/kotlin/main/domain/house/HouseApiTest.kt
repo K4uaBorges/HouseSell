@@ -311,21 +311,22 @@ class HouseApiTest {
 
     @Test
     fun `GET houses available returns only free house when another is booked`() {
-        val token = createUserAndGetToken("availability-owner@example.com")
+        val ownerToken = createUserAndGetToken("availability-owner@example.com")
+        val bookerToken = createUserAndGetToken("availability-booker@example.com")
         val locationSeed = Uuid.random().toString().take(8)
-        val countryId = createLocationAndGetId(token, "PT-$locationSeed", "COUNTRY")
-        val regionId = createLocationAndGetId(token, "Reg-$locationSeed", "REGION", countryId)
-        val districtId = createLocationAndGetId(token, "Dis-$locationSeed", "DISTRICT", regionId)
-        val municipalityId = createLocationAndGetId(token, "Mun-$locationSeed", "MUNICIPALITY", districtId)
-        val locationId = createLocationAndGetId(token, "Loc-$locationSeed", "LOCALITY", municipalityId)
+        val countryId = createLocationAndGetId(ownerToken, "PT-$locationSeed", "COUNTRY")
+        val regionId = createLocationAndGetId(ownerToken, "Reg-$locationSeed", "REGION", countryId)
+        val districtId = createLocationAndGetId(ownerToken, "Dis-$locationSeed", "DISTRICT", regionId)
+        val municipalityId = createLocationAndGetId(ownerToken, "Mun-$locationSeed", "MUNICIPALITY", districtId)
+        val locationId = createLocationAndGetId(ownerToken, "Loc-$locationSeed", "LOCALITY", municipalityId)
 
-        val freeHouseId = createHouseAndGetId(token, "Casa Livre", locationId)
-        val bookedHouseId = createHouseAndGetId(token, "Casa Ocupada", locationId)
+        val freeHouseId = createHouseAndGetId(ownerToken, "Casa Livre", locationId)
+        val bookedHouseId = createHouseAndGetId(ownerToken, "Casa Ocupada", locationId)
 
         val bookingResponse =
             api.routes(
                 Request(Method.POST, "/bookings")
-                    .header("Authorization", "Bearer $token")
+                    .header("Authorization", "Bearer $bookerToken")
                     .header("Content-Type", "application/json")
                     .body(
                         """
@@ -375,12 +376,13 @@ class HouseApiTest {
 
     @Test
     fun `GET house available days returns available days for month`() {
-        val token = createUserAndGetToken("available-days-owner@example.com")
-        val houseId = createHouseAndGetId(token, "Casa Calendario")
+        val ownerToken = createUserAndGetToken("available-days-owner@example.com")
+        val bookerToken = createUserAndGetToken("available-days-booker@example.com")
+        val houseId = createHouseAndGetId(ownerToken, "Casa Calendario")
 
         api.routes(
             Request(Method.POST, "/bookings")
-                .header("Authorization", "Bearer $token")
+                .header("Authorization", "Bearer $bookerToken")
                 .header("Content-Type", "application/json")
                 .body("""{"hid":"$houseId","startDate":"2026-06-10","endDate":"2026-06-15"}"""),
         )
@@ -451,12 +453,12 @@ class HouseApiTest {
                             "lid":"$lid",
                             "areaSqMt":120,
                             "pricePerNight":95.0,
-                            "description":"Casa teste"
+                            "description":"Casa teste $title"
                         }
                         """.trimIndent(),
                     ),
             )
-        return extractField(response.bodyString(), "id")
+        return extractField(response.bodyString(), "hid")
     }
 
     private fun createLocationAndGetId(
@@ -482,7 +484,7 @@ class HouseApiTest {
                     .body(payload),
             )
         assertEquals(Status.CREATED, response.status, response.bodyString())
-        return extractField(response.bodyString(), "id")
+        return extractField(response.bodyString(), "lid")
     }
 
     private fun createLeafLocationAndGetId(): String {

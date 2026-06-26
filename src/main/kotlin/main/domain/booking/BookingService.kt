@@ -114,7 +114,8 @@ class BookingService(
         val house = requireExistingHouse(hid)
         val yearMonth = YearMonth.of(year, month)
         val bookingsByHouse =
-            bookingRepo.getAll()
+            bookingRepo
+                .getAll()
                 .filter { it.hid == house.id }
 
         return (1..yearMonth.lengthOfMonth())
@@ -175,8 +176,7 @@ class BookingService(
         return (1..yearMonth.lengthOfMonth())
             .map { day ->
                 java.time.LocalDate.of(year, month, day)
-            }
-            .filter { localDate ->
+            }.filter { localDate ->
                 val dayStart = Date.of(localDate.toString())
                 val dayEnd = Date.of(localDate.plusDays(1).toString())
 
@@ -188,8 +188,7 @@ class BookingService(
                         dayEnd,
                     )
                 }
-            }
-            .map { localDate ->
+            }.map { localDate ->
                 Date.of(localDate.toString())
             }
     }
@@ -219,7 +218,7 @@ class BookingService(
 @OptIn(ExperimentalUuidApi::class)
 fun Booking.toGetBookingResponse() =
     GetBookingResponse(
-        id = id.toString(),
+        bid = id.toString(),
         hid = hid.toString(),
         uid = uid.toString(),
         startDate = startDate.toString(),

@@ -26,14 +26,6 @@ function normalizeType(rawType) {
     return String(rawType || "").trim().toUpperCase()
 }
 
-function createLocationsById(locations = []) {
-    return new Map(
-        locations
-            .filter(location => location && typeof location === "object" && String(location.id || "").trim())
-            .map(location => [String(location.id).trim(), location]),
-    )
-}
-
 function sortLocationsByName(locations = []) {
     return [...locations].sort((left, right) =>
         String(left?.name || "").localeCompare(String(right?.name || ""), undefined, { sensitivity: "base" }))
@@ -74,21 +66,6 @@ function createPathByType(locationsById, locationId) {
     }
 
     return pathByType
-}
-
-function getLocationSearchLabel(house, locationsById) {
-    const pathByType = createPathByType(locationsById, house?.lid)
-    const names =
-        LOCATION_FILTER_LEVELS
-            .map(level => String(pathByType[level.type]?.name || "").trim())
-            .filter(Boolean)
-
-    if (names.length) return names.join(" > ")
-
-    const locationName = String(house?.locationName || "").trim()
-    const locationType = String(house?.locationType || "").trim()
-    if (!locationName) return "Localização desconhecida"
-    return locationType ? `${locationName} (${locationType})` : locationName
 }
 
 function createLocationFilterForm({
@@ -227,8 +204,6 @@ function createLocationFilterForm({
 export {
     LOCATION_FILTER_LEVELS,
     createLocationFilterForm,
-    createLocationsById,
     createPathByType,
-    getLocationSearchLabel,
     normalizeLocationsPayload,
 }

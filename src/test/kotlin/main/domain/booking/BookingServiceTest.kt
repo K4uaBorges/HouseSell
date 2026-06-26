@@ -93,7 +93,7 @@ class BookingServiceTest {
         val info = service.getBookingInfoById(created.id)
 
         assertEquals(created.id, byId.id)
-        assertEquals(created.id.toString(), info.id)
+        assertEquals(created.id.toString(), info.bid)
     }
 
     @Test

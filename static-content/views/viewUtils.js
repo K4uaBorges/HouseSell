@@ -3,9 +3,9 @@ import { buildUrl } from "../api/buildUrl.js"
 import { fetchJson } from "../api/fetchJson.js"
 import {normalizeLocationsPayload} from "./houses/housePayload.js";
 import {readToken} from "../token/tokenStorage.js";
+import {locationNameHash} from "./locations/locations.js";
 
 const LOCATION_TYPES = ["COUNTRY", "REGION", "DISTRICT", "MUNICIPALITY", "LOCALITY"]
-
 // LOC UTILS ---------------------------------------------------------------//
 
 function resolveParentIdFromKeyword(parentKeyword, locations) {
@@ -23,7 +23,7 @@ export async function checkIsMine(hid) {
     if (!token) return false
     const myHouses = await fetchJson(buildUrl("/houses/mine"), { auth: true, cache: "no-store" })
     if (Array.isArray(myHouses) ) {
-        if (myHouses.any(house => house.id === hid)) return true
+        if (myHouses.any(house => house.hid === hid)) return true
     }
     return false
 }
@@ -137,9 +137,9 @@ function createLocationDropdowns(
       setSelectState(level, `Erro ao carregar ${activeTypes[level]}`)
     }
 
-    async function loadRootLocations() {
+    async function loadCountries() {
       if (!rootLocations.length || !hasLocationsOfType(rootLocations, activeTypes[0])) {
-          const data = await fetchJson(buildUrl("/locations", { limit: 100 }))
+          const data = await fetchJson(buildUrl("/locations/getCountries"))
           rootLocations = normalizeLocationsPayload(data)
       }
 
@@ -165,7 +165,7 @@ function createLocationDropdowns(
       try {
           const items = parentId
               ? await loadChildren(parentId)
-              : await loadRootLocations()
+              : await loadCountries()
 
           if (requestTokens[level] !== token) return
 

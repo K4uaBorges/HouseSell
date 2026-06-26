@@ -44,7 +44,7 @@ function getHouseById(mainContent, params = {}) {
             const isMine = String(session?.id || "").trim() === String(house.uid || "").trim()
             const recommendedHouses =
                 (Array.isArray(suggestedData?.houses) ? suggestedData.houses : Array.isArray(suggestedData) ? suggestedData : [])
-                    .filter(candidate => candidate.id !== house.id)
+                    .filter(candidate => candidate.hid !== house.hid)
                     .slice(0, 3)
 
             if (isMine) {
@@ -214,7 +214,7 @@ function getHouseById(mainContent, params = {}) {
                                 ...houseBookings.map(booking =>
                                     div(
                                         { class: "border rounded p-2" },
-                                        div({ class: "fw-semibold" }, `Booking ${booking.id}`),
+                                        div({ class: "fw-semibold" }, `Booking ${booking.bid}`),
                                         p({ class: "mb-0 text-muted" }, `${booking.startDate} -> ${booking.endDate}`),
                                     ),
                                 ),
@@ -265,7 +265,7 @@ function getHouseById(mainContent, params = {}) {
                         ),
                         a(
                             {
-                                href: houseBookingHash(house.id, startDate, endDate),
+                                href: houseBookingHash(house.hid, startDate, endDate),
                                 class: "btn btn-primary btn-sm",
                             },
                             "Alugar",

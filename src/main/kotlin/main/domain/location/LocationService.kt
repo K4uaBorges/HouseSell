@@ -55,12 +55,14 @@ class LocationService(
         return repo.getById(parentId)
     }
 
+    fun getCountries(): List<Location> = repo.getCountries()
+
     fun getLocationById(idRaw: String): Location = repo.getById(parseUuid(idRaw))
 
     fun getLocationInfoById(idRaw: String): GetLocationResponse {
         val location = getLocationById(idRaw)
         return GetLocationResponse(
-            id = location.id.toString(),
+            lid = location.id.toString(),
             name = location.name.value,
             type = location.type.name,
             parentId = location.parentId?.toString(),
@@ -187,7 +189,7 @@ class LocationService(
 @OptIn(ExperimentalUuidApi::class)
 fun Location.toCreateLocationResponse() =
     CreateLocationResponse(
-        id = id.toString(),
+        lid = id.toString(),
         name = name.value,
         type = type.name,
         parentId = parentId?.toString(),

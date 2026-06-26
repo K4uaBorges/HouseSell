@@ -130,7 +130,7 @@ class HouseServiceTest {
         val info = service.getHouseInfoById(created.id)
 
         assertEquals(created.id, byId.id)
-        assertEquals(created.id.toString(), info.id)
+        assertEquals(created.id.toString(), info.hid)
     }
 
     @Test

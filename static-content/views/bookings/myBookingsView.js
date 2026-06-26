@@ -22,7 +22,7 @@ function getMyBookings(mainContent) {
         .then(async data => {
             const bookings = normalizeBookingsPayload(data)
             const houses = await fetchHousesByIds(bookings.map(booking => booking.hid))
-            const houseById = new Map(houses.map(house => [house.id, house]))
+            const houseById = new Map(houses.map(house => [house.hid, house]))
 
             replaceMain(
                 mainContent,

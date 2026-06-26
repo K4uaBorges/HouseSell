@@ -22,7 +22,7 @@ data class DeleteBookingRequest(
 
 @Serializable
 data class CreateBookingResponse(
-    val id: String,
+    val bid: String,
     val hid: String,
     val uid: String,
     val startDate: String,
@@ -32,7 +32,7 @@ data class CreateBookingResponse(
 
 @Serializable
 data class GetBookingResponse(
-    val id: String,
+    val bid: String,
     val hid: String,
     val uid: String,
     val startDate: String,
@@ -41,7 +41,7 @@ data class GetBookingResponse(
 
 @Serializable
 data class DeleteBookingResponse(
-    val id: String,
+    val bid: String,
     val deleted: Boolean,
 )
 

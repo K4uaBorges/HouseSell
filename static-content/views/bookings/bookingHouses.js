@@ -4,8 +4,8 @@ import { buildUrl, fetchJson } from "../../utis/index.js"
 function dedupeHouses(houses) {
     const seen = new Set()
     return houses.filter(house => {
-        if (!house?.id || seen.has(house.id)) return false
-        seen.add(house.id)
+        if (!house?.hid || seen.has(house.hid)) return false
+        seen.add(house.hid)
         return true
     })
 }

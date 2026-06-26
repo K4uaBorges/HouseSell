@@ -53,8 +53,9 @@ function createHouseForm(locations = []) {
                         buildUrl("/houses"),
                         { method: "POST", auth: true, body: payload },
                     )
+                    console.warn("House created:", created)
                     statusBox.replaceChildren(createAlert("House criada.", "success"))
-                    if (created?.id) {
+                    if (created?.hid) {
                         window.location.hash = "#houses/mine"
                     }
                 } catch (error) {

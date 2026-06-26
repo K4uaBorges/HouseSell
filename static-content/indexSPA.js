@@ -87,23 +87,24 @@ function renderAppShell() {
     }
 
     const shell = div(
+        { class: "app-shell" },
         div(
-            { class: "d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3" },
+            { class: "topbar d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3" },
             div(
                 h1(
-                    { class: "h3 mb-1" },
-                    a({ href: "#dashboard", class: "text-decoration-none text-reset" }, "Booker"),
+                    { class: "app-brand h3 mb-1" },
+                    a({ href: "#dashboard", class: "brand-link text-decoration-none text-reset" }, "Booker"),
                 ),
-                p({ class: "text-muted mb-0" }, "Navegação principal."),
+                p({ class: "topbar-subtitle text-muted mb-0" }, "Navegação principal."),
             ),
             logoutButton,
         ),
         div(
-            { class: "row g-3 mb-3" },
+            { class: "nav-grid row g-3 mb-3" },
             div(
                 { class: "col-lg-6" },
                 div(
-                    { class: "border rounded p-3 h-100" },
+                    { class: "nav-panel border rounded p-3 h-100" },
                     h2({ class: "h6 mb-2" }, "My Dashboard"),
                     div({ class: "d-flex flex-wrap gap-3" },
                         a({ href: "#dashboard" }, "Dashboard"),
@@ -117,16 +118,16 @@ function renderAppShell() {
             div(
                 { class: "col-lg-6" },
                 div(
-                    { class: "border rounded p-3 h-100" },
+                    { class: "nav-panel border rounded p-3 h-100" },
                     h2({ class: "h6 mb-2" }, "Browse"),
                     div({ class: "d-flex flex-wrap gap-3" }, ...browseLinks),
                 ),
             ),
         ),
-        div({ id: "mainContent" }),
+        div({ id: "mainContent", class: "main-stage" }),
     )
 
-    document.body.className = "p-3"
+    document.body.className = "app-body authenticated p-3"
     document.body.replaceChildren(shell)
 }
 
@@ -267,7 +268,7 @@ function renderAuthenticationScreen() {
                                         actions: [
                                             a(
                                                 {
-                                                    href: `#houses/${encodeURIComponent(house.id)}`,
+                                                    href: `#houses/${encodeURIComponent(house.hid)}`,
                                                     class: "btn btn-outline-secondary btn-sm",
                                                     onclick: promptLogin,
                                                 },
@@ -275,7 +276,7 @@ function renderAuthenticationScreen() {
                                             ),
                                             a(
                                                 {
-                                                    href: `#houses/${encodeURIComponent(house.id)}/bookings/dateStart=${encodeURIComponent(todayIsoDate())}&dateEnd=${encodeURIComponent(tomorrowIsoDate())}`,
+                                                    href: `#houses/${encodeURIComponent(house.hid)}/bookings/dateStart=${encodeURIComponent(todayIsoDate())}&dateEnd=${encodeURIComponent(tomorrowIsoDate())}`,
                                                     class: "btn btn-primary btn-sm",
                                                     onclick: promptLogin,
                                                 },
@@ -322,12 +323,13 @@ function renderAuthenticationScreen() {
 
     const authPage =
         div(
+            { class: "auth-shell" },
             h1(
-                { class: "h3 mb-1" },
+                { class: "app-brand h3 mb-1" },
                 a(
                     {
                         href: "#login",
-                        class: "text-decoration-none text-reset",
+                        class: "brand-link text-decoration-none text-reset",
                         onclick: event => {
                             event.preventDefault()
                             showLoginForm()
@@ -337,13 +339,13 @@ function renderAuthenticationScreen() {
                     "Booker",
                 ),
             ),
-            p({ class: "text-muted mb-3" }, "Seleciona a secção e autentica-te em Users."),
+            p({ class: "topbar-subtitle text-muted mb-3" }, "Seleciona a secção e autentica-te em Users."),
             div(
-                { class: "row g-3 mb-3" },
+                { class: "auth-nav-grid row g-3 mb-3" },
                 div(
                     { class: "col-lg-6" },
                     div(
-                        { class: "border rounded p-3 h-100" },
+                        { class: "nav-panel border rounded p-3 h-100" },
                         h2({ class: "h6 mb-2" }, "Users"),
                         div(
                             { class: "d-flex flex-wrap gap-2" },
@@ -369,7 +371,7 @@ function renderAuthenticationScreen() {
                 div(
                     { class: "col-lg-6" },
                     div(
-                        { class: "border rounded p-3 h-100" },
+                        { class: "nav-panel border rounded p-3 h-100" },
                         h2({ class: "h6 mb-2" }, "Browse"),
                         div(
                             { class: "d-flex flex-wrap gap-3" },
@@ -380,12 +382,12 @@ function renderAuthenticationScreen() {
                     ),
                 ),
             ),
-            authSectionContainer,
-            browseSectionContainer,
+            div({ class: "auth-panel-wrap" }, authSectionContainer),
+            div({ class: "preview-panel-wrap" }, browseSectionContainer),
             div({ class: "mt-3" }, authStatus),
         )
 
-    document.body.className = "p-3"
+    document.body.className = "app-body guest p-3"
     document.body.replaceChildren(authPage)
 }
 
@@ -445,4 +447,4 @@ function setReloadPage(fn) {
     }
 }
 
-export { setReloadPage }
+export { setReloadPage, shuffleHouses }

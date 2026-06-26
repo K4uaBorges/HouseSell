@@ -27,6 +27,8 @@ object InMemoryLocationRepository : LocationRepository {
         return directChildren + directChildren.flatMap { getChildrenAll(it.id) }
     }
 
+    override fun getCountries(): List<Location> = locations.values.filter { it.type == main.domain.location.LocationType.COUNTRY }
+
     override fun getChildrenDirect(parentId: Uuid): List<Location> = locations.values.filter { it.parentId == parentId }
 
     override fun getFullPath(id: Uuid): List<Location> {

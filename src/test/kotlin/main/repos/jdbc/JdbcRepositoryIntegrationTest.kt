@@ -143,6 +143,39 @@ class JdbcRepositoryIntegrationTest : PostgresTestContainer() {
                 ),
             )
 
+        val renter =
+            userRepo.create(
+                User(
+                    id = Uuid.random(),
+                    name = Name.of("Renter"),
+                    email = Email.of("renter@test.com"),
+                    token = Uuid.random(),
+                ),
+            )
+
+        val house =
+            houseRepo.create(
+                House(
+                    id = Uuid.random(),
+                    uid = owner.id,
+                    title = Title.of("Casa do Owner"),
+                    lid = location.id,
+                    areaSqMt = 100,
+                    pricePerNight = 80.0,
+                    description = "Casa para testar cascade delete",
+                ),
+            )
+
+        bookingRepo.create(
+            Booking(
+                id = Uuid.random(),
+                hid = house.id,
+                uid = renter.id,
+                startDate = Date.of("2026-07-01"),
+                endDate = Date.of("2026-07-05"),
+            ),
+        )
+
         // Verificar que tudo existe
         assertEquals(2, userRepo.getAll().size)
         assertEquals(1, houseRepo.getAll().size)

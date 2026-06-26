@@ -43,7 +43,7 @@ function getBookingsByHouse(mainContent, params = {}, query = {}) {
                     submitClass: "btn btn-primary",
                     onSubmit: async payload => {
                         const created = await fetchJson(buildUrl("/bookings"), { method: "POST", auth: true, body: payload })
-                        window.location.hash = `#bookings/${encodeURIComponent(created.id)}`
+                        window.location.hash = `#bookings/${encodeURIComponent(created.bid)}`
                     },
                 })
 
@@ -66,7 +66,7 @@ function getBookingsByHouse(mainContent, params = {}, query = {}) {
 
             const data = await fetchJson(buildUrl("/bookings", { hid, dateStart, dateEnd }), { auth: true })
             const bookings = normalizeBookingsPayload(data)
-            const houseById = new Map([[house.id, house]])
+            const houseById = new Map([[house.hid, house]])
 
             replaceMain(
                 mainContent,

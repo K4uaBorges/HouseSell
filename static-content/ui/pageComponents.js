@@ -1,24 +1,25 @@
 import { a, button, div, form, h1, h2, input, label, li, option, p, pre, select, ul } from "../dsl/dsl.js"
 import { clearFieldValidation, validateDateRange } from "../utis/formValidation.js"
+import {buildHash} from "../utis/index.js";
 
 function createTitle(text) {
-    return h2({ class: "h4 mb-3" }, text)
+    return h2({ class: "page-title h4 mb-3" }, text)
 }
 
 function createAlert(message, type = "danger") {
-    return div({ class: `alert alert-${type}` }, message)
+    return div({ class: `app-alert alert alert-${type}` }, message)
 }
 
 function createJsonPre(data) {
-    return pre({ class: "bg-light border rounded p-3" }, JSON.stringify(data, null, 2))
+    return pre({ class: "app-code-block bg-light border rounded p-3" }, JSON.stringify(data, null, 2))
 }
 
 function createLinkList(items, toHref, toText) {
     return ul(
-        { class: "list-group" },
+        { class: "app-list list-group" },
         items.map(item =>
             li(
-                { class: "list-group-item" },
+                { class: "app-list-item list-group-item" },
                 a({ href: toHref(item) }, toText(item)),
             ),
         ),
@@ -31,32 +32,12 @@ function replaceMain(mainContent, node) {
 }
 
 function buildPage(title, ...children) {
-    return div(createTitle(title), ...children)
+    return div({ class: "page-shell" }, createTitle(title), ...children)
 }
 
 function createLinkedOrEmpty(items, emptyMessage, toHref, toText) {
     if (!items.length) return createAlert(emptyMessage, "secondary")
     return createLinkList(items, toHref, toText)
-}
-
-function buildHashWithInlineQuery(baseHashPath, query = {}) {
-    const normalizedBase =
-        String(baseHashPath || "")
-            .trim()
-            .replace(/^#/, "")
-            .replace(/^\/+/, "")
-            .replace(/\/+$/, "")
-    const search = new URLSearchParams()
-
-    for (const [key, value] of Object.entries(query)) {
-        if (value === null || value === undefined) continue
-        const trimmed = String(value).trim()
-        if (!trimmed) continue
-        search.set(key, trimmed)
-    }
-
-    const queryString = search.toString()
-    return queryString ? `#${normalizedBase}/${queryString}` : `#${normalizedBase}`
 }
 
 function nextIsoDate(value) {
@@ -107,14 +88,14 @@ function createDateSearchForm(
 
     return form(
         {
-            class: "row g-2 align-items-end mb-3",
+            class: "app-form-section row g-2 align-items-end mb-3",
             onsubmit: event => {
                 event.preventDefault()
                 const startDate = startDateInput.value.trim()
                 const endDate = endDateInput.value.trim()
                 if (!validateDateRange(startDateInput, endDateInput)) return
                 window.location.hash =
-                    buildHashWithInlineQuery(
+                    buildHash(
                         baseHashPath,
                         {
                             [startKey]: startDate,

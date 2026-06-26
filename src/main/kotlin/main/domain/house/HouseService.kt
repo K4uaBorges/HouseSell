@@ -5,8 +5,11 @@ import main.data.impl.caches.HouseCacheStats
 import main.data.impl.caches.HouseInfoCache
 import main.data.interfaces.HouseRepository
 import main.errors.DuplicateHouseException
+import org.slf4j.LoggerFactory
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+
+val logger = LoggerFactory.getLogger(HouseService::class.java)
 
 @OptIn(ExperimentalUuidApi::class)
 class HouseService(
@@ -24,6 +27,9 @@ class HouseService(
         val title = Title.of(titleRaw)
         val description = descriptionRaw.trim()
         ensureUniqueHouseData(ownerId, title.value, description)
+
+        logger.warn("userId: $ownerId is creating a house with title: ${title.value}")
+
         val house =
             House(
                 id = Uuid.random(),
@@ -34,6 +40,8 @@ class HouseService(
                 pricePerNight = pricePerNight,
                 description = description,
             )
+
+        logger.warn("House created with id: ${house.id} for userId: $ownerId")
 
         house.certified
         return repo.create(house).also { cache.put(it.id, it) }
@@ -85,7 +93,8 @@ class HouseService(
         val normalizedTitle = normalizeText(titleRaw)
         val normalizedDescription = normalizeText(descriptionRaw)
 
-        repo.getAll()
+        repo
+            .getAll()
             .asSequence()
             .filter { it.uid == ownerId }
             .filter { it.id != excludeId }
@@ -100,7 +109,8 @@ class HouseService(
     }
 
     private fun normalizeText(raw: String): String =
-        raw.trim()
+        raw
+            .trim()
             .lowercase()
             .replace(Regex("\\s+"), " ")
 
@@ -115,7 +125,7 @@ class HouseService(
 @OptIn(ExperimentalUuidApi::class)
 fun House.toGetHouseResponse() =
     GetHouseResponse(
-        id = id.toString(),
+        hid = id.toString(),
         uid = uid.toString(),
         title = title.value,
         lid = lid.toString(),

@@ -10,22 +10,7 @@ import {
     runAsync,
     ul,
 } from "../utis/index.js"
-
-async function fetchHouseTitles(bookings) {
-    const uniqueHouseIds = [...new Set(bookings.map(booking => booking.hid).filter(Boolean))]
-    const houses =
-        await Promise.all(
-            uniqueHouseIds.map(async houseId => {
-                try {
-                    return await fetchJson(buildUrl(`/houses/${encodeURIComponent(houseId)}`))
-                } catch {
-                    return null
-                }
-            }),
-        )
-
-    return new Map(houses.filter(Boolean).map(house => [house.id, house.title]))
-}
+import {fetchHouseTitles} from "../handlers/users.js";
 
 function getDashboard(mainContent) {
     runAsync(
@@ -64,7 +49,7 @@ function getDashboard(mainContent) {
                         createLinkedOrEmpty(
                             houses,
                             "Sem casas criadas.",
-                            house => `#houses/${encodeURIComponent(house.id)}`,
+                            house => `#houses/${encodeURIComponent(house.hid)}`,
                             house => `${house.title} (${house.pricePerNight}/noite)`,
                         ),
                     ),
@@ -74,7 +59,7 @@ function getDashboard(mainContent) {
                         createLinkedOrEmpty(
                             bookings,
                             "Sem bookings reservados.",
-                            booking => `#bookings/${encodeURIComponent(booking.id)}`,
+                            booking => `#bookings/${encodeURIComponent(booking.bid)}`,
                             booking => `${houseTitles.get(booking.hid) || "House"} | ${booking.startDate} -> ${booking.endDate}`,
                         ),
                     ),

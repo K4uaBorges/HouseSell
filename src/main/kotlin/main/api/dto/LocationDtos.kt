@@ -27,7 +27,7 @@ data class DeleteLocationRequest(
 // Response DTOs
 @Serializable
 data class CreateLocationResponse(
-    val id: String,
+    val lid: String,
     val name: String,
     val type: String,
     val parentId: String?,
@@ -36,7 +36,7 @@ data class CreateLocationResponse(
 
 @Serializable
 data class GetLocationResponse(
-    val id: String,
+    val lid: String,
     val name: String,
     val type: String,
     val parentId: String?,
@@ -45,7 +45,7 @@ data class GetLocationResponse(
 
 @Serializable
 data class DeleteLocationResponse(
-    val id: String,
+    val lid: String,
     val deleted: Boolean,
 )
 

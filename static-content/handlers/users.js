@@ -28,7 +28,7 @@ function normalizeListPayload(data, key) {
     return []
 }
 
-async function fetchHouseTitles(bookings) {
+export async function fetchHouseTitles(bookings) {
     const uniqueHouseIds = [...new Set(bookings.map(booking => booking.hid).filter(Boolean))]
     const houses =
         await Promise.all(
@@ -40,7 +40,7 @@ async function fetchHouseTitles(bookings) {
                 }
             }),
         )
-    return new Map(houses.filter(Boolean).map(house => [house.id, house.title]))
+    return new Map(houses.filter(Boolean).map(house => [house.hid, house.title]))
 }
 
 function getUsers(mainContent) {
@@ -67,7 +67,7 @@ function getUsers(mainContent) {
                         createLinkedOrEmpty(
                             houses,
                             "Sem casas criadas.",
-                            house => `#houses/${encodeURIComponent(house.id)}`,
+                            house => `#houses/${encodeURIComponent(house.hid)}`,
                             house => `${house.title} (${house.pricePerNight}/noite)`,
                         ),
                     ),
@@ -77,7 +77,7 @@ function getUsers(mainContent) {
                         createLinkedOrEmpty(
                             bookings,
                             "Sem bookings reservados.",
-                            booking => `#bookings/${encodeURIComponent(booking.id)}`,
+                            booking => `#bookings/${encodeURIComponent(booking.bid)}`,
                             booking => `${houseTitles.get(booking.hid) || "House"} | ${booking.startDate} -> ${booking.endDate}`,
                         ),
                     ),
@@ -150,6 +150,8 @@ function getMyAccount(mainContent) {
                 replaceMain(mainContent, buildPage("Minha conta", createAlert("Sessão indisponível.", "warning")))
                 return
             }
+
+            console.log("Session data:", session)
 
             const user = await fetchJson(buildUrl(`/users/${encodeURIComponent(session.id)}`))
             const statusBox = div()

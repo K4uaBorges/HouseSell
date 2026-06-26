@@ -60,6 +60,7 @@ class HousesWebApi(
             // Locations
             "/locations" bind Method.POST to ::createLocation,
             "/locations" bind Method.GET to ::listLocations,
+            "/locations/getCountries" bind Method.GET to ::listCountries,
             "/locations/{lid}" bind Method.GET to ::getLocation,
             "/locations/{lid}" bind Method.PUT to ::updateLocation,
             "/locations/{lid}" bind Method.DELETE to ::deleteLocation,
@@ -146,6 +147,11 @@ class HousesWebApi(
             jsonResponse(Status.OK, services.listLocations(pagingOf(request)))
         }
 
+    private fun listCountries(request: Request): Response =
+        safe {
+            jsonResponse(Status.OK, services.listCountries())
+        }
+
     private fun getLocation(request: Request): Response =
         safe {
             val lid = requirePath(request, "lid", "Location id is required.")
@@ -167,7 +173,7 @@ class HousesWebApi(
             val body = decodeOptionalBody<DeleteLocationRequest>(request)
             validateDeleteRequestId(lid, body?.id, "location id")
             services.deleteLocation(token, lid)
-            jsonResponse(Status.OK, DeleteLocationResponse(id = lid, deleted = true))
+            jsonResponse(Status.OK, DeleteLocationResponse(lid = lid, deleted = true))
         }
 
     private fun getLocationChildrenAll(request: Request): Response =
@@ -235,7 +241,7 @@ class HousesWebApi(
             val body = decodeOptionalBody<DeleteHouseRequest>(request)
             validateDeleteRequestId(hid, body?.id, "house id")
             services.deleteHouse(bearerToken(request), hid)
-            jsonResponse(Status.OK, DeleteHouseResponse(id = hid, deleted = true))
+            jsonResponse(Status.OK, DeleteHouseResponse(hid = hid, deleted = true))
         }
 
     // ==================== BOOKING ====================
@@ -277,7 +283,7 @@ class HousesWebApi(
             val body = decodeOptionalBody<DeleteBookingRequest>(request)
             validateDeleteRequestId(bid, body?.id, "booking id")
             services.deleteBooking(bearerToken(request), bid)
-            jsonResponse(Status.OK, DeleteBookingResponse(id = bid, deleted = true))
+            jsonResponse(Status.OK, DeleteBookingResponse(bid = bid, deleted = true))
         }
 
     private fun listAvailableHouses(request: Request): Response =

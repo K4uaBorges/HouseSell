@@ -212,6 +212,8 @@ class HousesServices(
 
     fun getLocation(lid: String): GetLocationResponse = locationService.getLocationInfoById(lid)
 
+    fun listCountries(): List<LocationSummary> = locationService.getCountries().map { it.toLocationSummary() }
+
     fun getLocationChildrenAll(lid: String): List<LocationSummary> = locationService.getChildrenAll(lid)
 
     fun getLocationChildrenDirect(lid: String): List<LocationSummary> = locationService.getChildrenDirect(lid)
@@ -265,7 +267,7 @@ class HousesServices(
                 descriptionRaw = request.description,
             )
         return CreateHouseResponse(
-            id = house.id.toString(),
+            hid = house.id.toString(),
             uid = house.uid.toString(),
             title = house.title.value,
             lid = house.lid.toString(),
@@ -362,7 +364,7 @@ class HousesServices(
                 endDateRaw = request.endDate,
             )
         return CreateBookingResponse(
-            id = booking.id.toString(),
+            bid = booking.id.toString(),
             hid = booking.hid.toString(),
             uid = booking.uid.toString(),
             startDate = booking.startDate.toString(),
@@ -457,10 +459,11 @@ class HousesServices(
                     locationId == null || locationService.isSameOrDescendant(house.lid, locationId)
                 }.filter { house ->
                     search == null ||
-                        house.title.value.lowercase().contains(search) ||
+                        house.title.value
+                            .lowercase()
+                            .contains(search) ||
                         house.description.lowercase().contains(search)
-                }
-                .map { it.toGetHouseResponse() }
+                }.map { it.toGetHouseResponse() }
                 .page(paging)
 
         return ListAvailableHousesResponse(houses)
@@ -557,7 +560,7 @@ class HousesServices(
     companion object {
         private const val BOOTSTRAP_USER_NAME = "Principal Demo"
         private const val BOOTSTRAP_USER_EMAIL = "principal.demo@houses.local"
-        private const val BOOTSTRAP_USER_PASSWORD = "Demo123"
+        private const val BOOTSTRAP_USER_PASSWORD = "Demo1234"
         private const val BOOTSTRAP_LOCATION_NAME = "Demo Country"
         private const val BOOTSTRAP_FREE_HOUSE_TITLE = "Casa Demo Livre"
         private const val BOOTSTRAP_BUSY_HOUSE_TITLE = "Casa Demo Ocupada"

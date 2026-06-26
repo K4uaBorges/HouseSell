@@ -1,11 +1,11 @@
 package main.app
 
 import main.api.httpServer.HousesDataMem
+import main.api.httpServer.HousesRouter
+import main.api.httpServer.HousesWebApi
 import main.app.config.getOptionalSetting
 import main.app.config.getRequiredSetting
 import main.app.config.loadDotEnv
-import main.api.httpServer.HousesRouter
-import main.api.httpServer.HousesWebApi
 
 fun main() {
     val dotEnv = loadDotEnv()

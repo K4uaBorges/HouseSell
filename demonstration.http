@@ -1,0 +1,298 @@
+# # API Demonstration Script (HTTP REST Client / Postman)
+# Executa os requests pela ordem apresentada.
+# Base URL default: porta 8081 (ajusta se necessário).
+
+@baseUrl = http://localhost:8081/api
+@json = application/json
+
+###
+# ## 1) Create two users
+
+# @name create_user_1
+POST {{baseUrl}}/users
+Content-Type: {{json}}
+
+{
+  "name": "Demo User One",
+  "email": "demo.user.one@example.com"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("user1Id", body.id);
+client.global.set("user1Token", body.token);
+%}
+
+###
+# @name create_user_2
+POST {{baseUrl}}/users
+Content-Type: {{json}}
+
+{
+  "name": "Demo User Two",
+  "email": "demo.user.two@example.com"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("user2Id", body.id);
+client.global.set("user2Token", body.token);
+%}
+
+###
+# ## 2) Attempt duplicate email (same as first user)
+
+# @name create_user_duplicate_email
+POST {{baseUrl}}/users
+Content-Type: {{json}}
+
+{
+  "name": "Demo User Duplicate",
+  "email": "demo.user.one@example.com"
+}
+
+###
+# ## 3) Create locations chain: Portugal -> Lisboa -> Oeiras -> Paco de Arcos
+
+# @name create_location_portugal
+POST {{baseUrl}}/locations
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "name": "Portugal Demo",
+  "type": "COUNTRY",
+  "parentId": null
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("locationPortugalId", body.id);
+%}
+
+###
+# @name create_location_lisboa
+POST {{baseUrl}}/locations
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "name": "Lisboa Demo",
+  "type": "REGION",
+  "parentId": "{{locationPortugalId}}"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("locationLisboaId", body.id);
+%}
+
+###
+# @name create_location_oeiras
+POST {{baseUrl}}/locations
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "name": "Oeiras Demo",
+  "type": "DISTRICT",
+  "parentId": "{{locationLisboaId}}"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("locationOeirasId", body.id);
+%}
+
+###
+# @name create_location_paco_arcos
+POST {{baseUrl}}/locations
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "name": "Paco de Arcos Demo",
+  "type": "MUNICIPALITY",
+  "parentId": "{{locationOeirasId}}"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("locationPacoArcosId", body.id);
+%}
+
+###
+# ## 4) List child locations of Lisboa
+
+GET {{baseUrl}}/locations/{{locationLisboaId}}/childrenDirect
+
+###
+# ## 5) Add three houses in Paco de Arcos
+
+# @name create_house_1
+POST {{baseUrl}}/houses
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "title": "Casa Demo 1",
+  "lid": "{{locationPacoArcosId}}",
+  "areaSqMt": 120,
+  "pricePerNight": 95.0,
+  "description": "Primeira casa demo em Paco de Arcos"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("house1Id", body.id);
+%}
+
+###
+# @name create_house_2
+POST {{baseUrl}}/houses
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "title": "Casa Demo 2",
+  "lid": "{{locationPacoArcosId}}",
+  "areaSqMt": 90,
+  "pricePerNight": 80.0,
+  "description": "Segunda casa demo em Paco de Arcos"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("house2Id", body.id);
+%}
+
+###
+# @name create_house_3
+POST {{baseUrl}}/houses
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "title": "Casa Demo 3",
+  "lid": "{{locationPacoArcosId}}",
+  "areaSqMt": 150,
+  "pricePerNight": 120.0,
+  "description": "Terceira casa demo em Paco de Arcos"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("house3Id", body.id);
+%}
+
+###
+# ## 6) List all houses
+
+GET {{baseUrl}}/houses
+
+###
+# ## 7) Show details of one house
+
+GET {{baseUrl}}/houses/{{house1Id}}
+
+###
+# ## 8) Create two bookings for the first house (first user)
+
+# @name create_booking_1
+POST {{baseUrl}}/bookings
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "hid": "{{house1Id}}",
+  "startDate": "2026-07-01",
+  "endDate": "2026-07-05"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("booking1Id", body.id);
+%}
+
+###
+# @name create_booking_2
+POST {{baseUrl}}/bookings
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "hid": "{{house1Id}}",
+  "startDate": "2026-07-10",
+  "endDate": "2026-07-12"
+}
+
+> {%
+const body = response.body.json ?? response.body;
+client.global.set("booking2Id", body.id);
+%}
+
+###
+# ## 9) Attempt invalid date format booking
+
+POST {{baseUrl}}/bookings
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "hid": "{{house1Id}}",
+  "startDate": "07-15-2026",
+  "endDate": "2026-07-16"
+}
+
+###
+# ## 10) Attempt overlapping booking
+
+POST {{baseUrl}}/bookings
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "hid": "{{house1Id}}",
+  "startDate": "2026-07-03",
+  "endDate": "2026-07-04"
+}
+
+###
+# ## 11) List all bookings for the first house
+
+GET {{baseUrl}}/bookings?hid={{house1Id}}&dateStart=2026-07-01&dateEnd=2026-07-31
+Authorization: Bearer {{user1Token}}
+
+###
+# ## 12) Show details of one booking
+
+GET {{baseUrl}}/bookings/{{booking1Id}}
+Authorization: Bearer {{user1Token}}
+
+###
+# ## 13) List houses with pagination (limit=2), navigating all pages
+
+GET {{baseUrl}}/houses?skip=0&limit=2
+
+###
+GET {{baseUrl}}/houses?skip=2&limit=2
+
+###
+GET {{baseUrl}}/houses?skip=4&limit=2
+
+###
+# ## 14) Remove a booking
+
+DELETE {{baseUrl}}/bookings/{{booking1Id}}
+Authorization: Bearer {{user1Token}}
+Content-Type: {{json}}
+
+{
+  "id": "{{booking1Id}}"
+}
+
+###
+# ## 15) Attempt to show details of removed booking
+
+GET {{baseUrl}}/bookings/{{booking1Id}}
+Authorization: Bearer {{user1Token}}

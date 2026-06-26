@@ -12,8 +12,7 @@ function notifyTokenChanged(token) {
 
 function maybeExtractToken(payload) {
     if (!payload || typeof payload !== "object") return ""
-    const raw = typeof payload.token === "string" ? payload.token.trim() : ""
-    return raw
+    return typeof payload.token === "string" ? payload.token.trim() : ""
 }
 
 function readSession() {

@@ -36,14 +36,14 @@ function createHouseCard(
     const fallbackActions = [
         a(
             {
-                href: `#houses/${encodeURIComponent(house.id)}`,
+                href: `#houses/${encodeURIComponent(house.hid)}`,
                 class: "btn btn-outline-secondary btn-sm",
             },
             "Ver detalhes",
         ),
         a(
             {
-                href: houseBookingHash(house.id, startDate, endDate),
+                href: houseBookingHash(house.hid, startDate, endDate),
                 class: "btn btn-primary btn-sm",
             },
             "Alugar",
@@ -51,14 +51,14 @@ function createHouseCard(
     ]
 
     return div(
-        { class: "card border-0 shadow-sm h-100" },
+        { class: "house-card card border-0 shadow-sm h-100" },
         div(
             { class: "row g-0 h-100" },
             div(
                 { class: "col-md-4" },
                 div(
                     {
-                        class: "bg-light border-end h-100 d-flex align-items-center justify-content-center text-muted fw-semibold",
+                        class: "house-card-media bg-light border-end h-100 d-flex align-items-center justify-content-center text-muted fw-semibold",
                         style: { minHeight: "220px" },
                     },
                     "Sem fotos",
@@ -67,7 +67,7 @@ function createHouseCard(
             div(
                 { class: "col-md-8" },
                 div(
-                    { class: "card-body d-flex flex-column h-100" },
+                    { class: "house-card-body card-body d-flex flex-column h-100" },
                     div(
                         { class: "d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3" },
                         div(
@@ -106,7 +106,7 @@ function createHouseCardGrid(
     if (!houses.length) return createAlert(emptyMessage, "secondary")
 
     return div(
-        { class: "row g-3" },
+        { class: "house-card-grid row g-3" },
         ...houses.map(house =>
             div(
                 { class: "col-12" },

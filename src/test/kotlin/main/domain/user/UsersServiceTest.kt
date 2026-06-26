@@ -1,6 +1,7 @@
 package main.domain.user
 
 import main.data.impl.mem.InMemoryUsersRepository
+import main.errors.UnauthorizedException
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -108,7 +109,7 @@ class UsersServiceTest {
         service.createUser("Alice", "alice@example.com", password)
 
         val error =
-            assertFailsWith<IllegalArgumentException> {
+            assertFailsWith<UnauthorizedException> {
                 service.authenticateUser("alice@example.com", "Wrongpass1")
             }
 

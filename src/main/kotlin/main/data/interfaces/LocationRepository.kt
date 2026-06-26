@@ -20,6 +20,8 @@ interface LocationRepository : Repository<Uuid, Location> {
 
     override fun clear()
 
+    fun getCountries(): List<Location>
+
     fun getChildrenAll(parentId: Uuid): List<Location>
 
     fun getChildrenDirect(parentId: Uuid): List<Location>
